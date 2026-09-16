@@ -174,5 +174,71 @@ class TacticalReloadTestCase(unittest.TestCase):
         self.assertTrue(res.data.startswith(b'%PDF'))
         self.assertGreater(len(res.data), 1000)
 
+    def test_custom_calibro_and_csv(self):
+        # 1. Registra e autentica utente
+        self.client.post('/api/auth/register', json={
+            'username': 'operatore_ballistic_custom',
+            'password': 'password123'
+        })
+
+        # 2. Inserimento manuale nuovo calibro personalizzato
+        res_post = self.client.post('/api/tabelle', json={
+            'calibro': '6.5 Creedmoor Custom',
+            'produttore_polvere': 'Reload Swiss',
+            'tipo_polvere': 'RS60 Test',
+            'peso_palla_grani': 140.0,
+            'dose_min_grani': 39.5,
+            'dose_max_grani': 42.8,
+            'oal_consigliato': 71.5,
+            'note': 'Test Hornady ELD-M'
+        })
+        self.assertEqual(res_post.status_code, 200)
+        data_post = json.loads(res_post.data)
+        self.assertTrue(data_post['success'])
+        custom_id = data_post['id']
+
+        # 3. Verifica presenza nella lista tabelle e nel filtro calibri
+        res_list = self.client.get('/api/tabelle')
+        self.assertEqual(res_list.status_code, 200)
+        data_list = json.loads(res_list.data)
+        self.assertIn('6.5 Creedmoor Custom', data_list['calibri'])
+        found = next((t for t in data_list['tabelle'] if t['id'] == custom_id), None)
+        self.assertIsNotNone(found)
+        self.assertTrue(found['is_custom'])
+        self.assertTrue(found['can_delete'])
+
+        # 4. Download template CSV
+        res_tpl = self.client.get('/api/tabelle/template-csv')
+        self.assertEqual(res_tpl.status_code, 200)
+        self.assertIn(b'calibro,produttore_polvere', res_tpl.data)
+
+        # 5. Upload CSV massivo
+        csv_sample = (
+            "calibro,produttore_polvere,tipo_polvere,peso_palla_grani,dose_min_grani,dose_max_grani,oal_consigliato,note\n"
+            ".300 AAC Blackout Test,Vihtavuori,N110 Custom,125.0,17.0,19.2,54.0,Test Sub/Sup\n"
+            "7.62x39 Soviet Test,Lovex,D073.4,123.0,24.0,26.5,56.0,Test AK\n"
+        )
+        res_csv = self.client.post('/api/tabelle/upload-csv', json={'csv_text': csv_sample})
+        self.assertEqual(res_csv.status_code, 200)
+        data_csv = json.loads(res_csv.data)
+        self.assertTrue(data_csv['success'])
+        self.assertEqual(data_csv['count'], 2)
+
+        # 6. Verifica che i calibri CSV compaiano nel DB
+        res_check = self.client.get('/api/tabelle?calibro=.300 AAC Blackout Test')
+        data_check = json.loads(res_check.data)
+        self.assertEqual(len(data_check['tabelle']), 1)
+        self.assertEqual(data_check['tabelle'][0]['tipo_polvere'], 'N110 Custom')
+
+        # 7. Cancellazione voce custom
+        res_del = self.client.delete(f'/api/tabelle/{custom_id}')
+        self.assertEqual(res_del.status_code, 200)
+        self.assertTrue(json.loads(res_del.data)['success'])
+
+        # 8. Verifica che non si possano cancellare le tabelle CIP ufficiali (id 1 ha user_id NULL)
+        res_del_cip = self.client.delete('/api/tabelle/1')
+        self.assertEqual(res_del_cip.status_code, 403)
+
 if __name__ == '__main__':
     unittest.main()
+

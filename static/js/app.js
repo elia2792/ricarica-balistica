@@ -238,10 +238,13 @@ async function salvaPresetEconomico() {
 }
 
 // ==========================================
-// TABELLE DI RICARICA UFFICIALI
+// TABELLE DI RICARICA (CIP + PERSONALIZZATE)
 // ==========================================
+let tabNuovaTabellaAttivo = 'manuale';
+
 async function caricaTabelle() {
-  const calibroSelezionato = document.getElementById('filtro-calibro').value;
+  const calibroSelect = document.getElementById('filtro-calibro');
+  const calibroSelezionato = calibroSelect.value;
   const tbody = document.getElementById('tabelle-tbody');
   const countSpan = document.getElementById('tot-tabelle-count');
   
@@ -253,36 +256,74 @@ async function caricaTabelle() {
     const res = await fetch(url);
     const data = await res.json();
     
-    const select = document.getElementById('filtro-calibro');
-    if (select.options.length <= 1 && data.calibri) {
+    // Popola dropdown filtro calibri
+    if (data.calibri) {
+      const prevVal = calibroSelect.value;
+      calibroSelect.innerHTML = '<option value="ALL">TUTTI I CALIBRI (Canna Rigata & Liscia)</option>';
       data.calibri.forEach(cal => {
         const opt = document.createElement('option');
         opt.value = cal;
         opt.textContent = cal;
-        select.appendChild(opt);
+        calibroSelect.appendChild(opt);
       });
-      if (calibroSelezionato && calibroSelezionato !== 'ALL') {
-        select.value = calibroSelezionato;
+      if (prevVal && Array.from(calibroSelect.options).some(o => o.value === prevVal)) {
+        calibroSelect.value = prevVal;
       }
     }
+
+    // Popola datalist calibri per autocompletamento
+    const dlCalibri = document.getElementById('datalist-calibri');
+    if (dlCalibri && data.calibri) {
+      dlCalibri.innerHTML = data.calibri.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    }
+
+    // Popola datalist polveri
+    const dlPolveri = document.getElementById('datalist-polveri');
+    if (dlPolveri && data.polveri) {
+      dlPolveri.innerHTML = data.polveri.map(p => `<option value="${escapeHtml(p)}">`).join('');
+    }
+
+    // Popola datalist produttori
+    const dlProduttori = document.getElementById('datalist-produttori');
+    if (dlProduttori && data.produttori) {
+      dlProduttori.innerHTML = data.produttori.map(pr => `<option value="${escapeHtml(pr)}">`).join('');
+    }
     
-    countSpan.textContent = `${data.tabelle.length} Riferimenti CIP`;
+    countSpan.textContent = `${data.tabelle.length} Riferimenti nel Database`;
     
     if (data.tabelle.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-mono">Nessun dato per questo calibro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-mono">Nessun dato per questo calibro. Usa il pulsante "+ Calibro / Polvere" per aggiungerlo!</td></tr>`;
       return;
     }
     
     tbody.innerHTML = data.tabelle.map(row => {
+      const badge = row.is_custom 
+        ? `<span class="px-1.5 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40 text-[9px] font-bold">CUSTOM</span>` 
+        : `<span class="px-1.5 py-0.5 rounded bg-tacblue/20 text-tacblue border border-tacblue/40 text-[9px] font-bold">CIP</span>`;
+      
+      const opInfo = row.operatore ? `<span class="text-[9px] text-gray-500 font-mono block">By ${escapeHtml(row.operatore)}</span>` : '';
+      const noteBadge = row.note ? `<span class="text-[10px] text-gray-400 italic block mt-0.5" title="${escapeHtml(row.note)}">📝 ${escapeHtml(row.note)}</span>` : '';
+      
+      const btnDelete = row.can_delete 
+        ? `<button onclick="eliminaDatoTabella(${row.id})" title="Elimina dato ricarica" class="px-2 py-1 bg-red-950/40 hover:bg-red-800 text-red-400 hover:text-white border border-red-800/60 text-[10px] font-bold rounded uppercase transition ml-1">
+             <i data-lucide="trash-2" class="w-3 h-3"></i>
+           </button>` 
+        : '';
+
       return `
         <tr class="hover:bg-tacpanel/80 transition-colors">
           <td class="p-2.5">
-            <span class="font-bold text-white block">${escapeHtml(row.calibro)}</span>
-            <span class="text-[10px] text-gray-400 font-mono">${row.peso_palla_grani} grs</span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-bold text-white">${escapeHtml(row.calibro)}</span>
+              ${badge}
+            </div>
+            <span class="text-[10px] text-gray-400 font-mono">${row.peso_palla_grani ? row.peso_palla_grani + ' grs' : '-'}</span>
+            ${opInfo}
+            ${noteBadge}
           </td>
           <td class="p-2.5">
             <span class="text-white block font-medium">${escapeHtml(row.tipo_polvere)}</span>
-            <span class="text-[10px] text-gray-400 font-mono">${escapeHtml(row.produttore_polvere)}</span>
+            <span class="text-[10px] text-gray-400 font-mono">${escapeHtml(row.produttore_polvere || '-')}</span>
           </td>
           <td class="p-2.5 text-center font-bold text-gray-300">
             ${row.dose_min_grani ? row.dose_min_grani.toFixed(1) : '-'}
@@ -293,19 +334,176 @@ async function caricaTabelle() {
           <td class="p-2.5 text-center text-gray-300">
             ${row.oal_consigliato ? row.oal_consigliato.toFixed(1) : '-'}
           </td>
-          <td class="p-2.5 text-right">
-            <button onclick="usaInRicetta('${escapeHtml(row.calibro)}', '${escapeHtml(row.produttore_polvere)} ${escapeHtml(row.tipo_polvere)}', ${row.dose_max_grani || 0}, ${row.dose_min_grani || 0}, ${row.peso_palla_grani || 0}, ${row.oal_consigliato || 0})" 
+          <td class="p-2.5 text-right whitespace-nowrap">
+            <button onclick="usaInRicetta('${escapeHtml(row.calibro)}', '${escapeHtml(row.produttore_polvere || '')} ${escapeHtml(row.tipo_polvere)}'.trim(), ${row.dose_max_grani || 0}, ${row.dose_min_grani || 0}, ${row.peso_palla_grani || 0}, ${row.oal_consigliato || 0})" 
                     class="px-2.5 py-1 bg-tacblue/20 hover:bg-tacblue text-tacblue hover:text-white border border-tacblue/50 text-[10px] font-bold rounded uppercase transition">
               Usa
             </button>
+            ${btnDelete}
           </td>
         </tr>
       `;
     }).join('');
     
+    lucide.createIcons();
+    
   } catch (err) {
     console.error("Errore tabelle:", err);
     tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400 font-mono">Errore nel caricamento delle tabelle.</td></tr>`;
+  }
+}
+
+function apriModaleNuovaTabella(tab = 'manuale') {
+  const modal = document.getElementById('modal-nuova-tabella');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  impostaTabNuovaTabella(tab);
+  document.getElementById('tabella-error-banner').classList.add('hidden');
+  document.getElementById('tabella-success-banner').classList.add('hidden');
+  lucide.createIcons();
+}
+
+function chiudiModaleNuovaTabella() {
+  const modal = document.getElementById('modal-nuova-tabella');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  document.getElementById('form-nuova-tabella').reset();
+  const csvArea = document.getElementById('csv-text-area');
+  if (csvArea) csvArea.value = '';
+  const csvFile = document.getElementById('csv-file-input');
+  if (csvFile) csvFile.value = '';
+  document.getElementById('tabella-error-banner').classList.add('hidden');
+  document.getElementById('tabella-success-banner').classList.add('hidden');
+}
+
+function impostaTabNuovaTabella(tab) {
+  tabNuovaTabellaAttivo = tab;
+  const tabManuale = document.getElementById('tab-tabella-manuale');
+  const tabCsv = document.getElementById('tab-tabella-csv');
+  const formManuale = document.getElementById('form-nuova-tabella');
+  const formCsv = document.getElementById('form-nuova-tabella-csv');
+  
+  if (tab === 'manuale') {
+    tabManuale.className = "py-2 text-center font-bold rounded bg-tacblue text-white transition";
+    tabCsv.className = "py-2 text-center font-bold rounded text-gray-400 hover:text-white transition";
+    formManuale.classList.remove('hidden');
+    formCsv.classList.add('hidden');
+  } else {
+    tabCsv.className = "py-2 text-center font-bold rounded bg-tacblue text-white transition";
+    tabManuale.className = "py-2 text-center font-bold rounded text-gray-400 hover:text-white transition";
+    formCsv.classList.remove('hidden');
+    formManuale.classList.add('hidden');
+  }
+}
+
+async function salvaNuovaTabella(e) {
+  e.preventDefault();
+  const errBanner = document.getElementById('tabella-error-banner');
+  const succBanner = document.getElementById('tabella-success-banner');
+  errBanner.classList.add('hidden');
+  succBanner.classList.add('hidden');
+  
+  const payload = {
+    calibro: document.getElementById('nt-calibro').value.trim(),
+    produttore_polvere: document.getElementById('nt-produttore').value.trim(),
+    tipo_polvere: document.getElementById('nt-tipo-polvere').value.trim(),
+    peso_palla_grani: parseFloat(document.getElementById('nt-peso-palla').value) || 0,
+    dose_min_grani: parseFloat(document.getElementById('nt-dose-min').value) || 0,
+    dose_max_grani: parseFloat(document.getElementById('nt-dose-max').value) || 0,
+    oal_consigliato: parseFloat(document.getElementById('nt-oal').value) || 0,
+    note: document.getElementById('nt-note').value.trim()
+  };
+  
+  try {
+    const res = await fetch('/api/tabelle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      succBanner.textContent = data.message || "Riferimento salvato con successo!";
+      succBanner.classList.remove('hidden');
+      document.getElementById('form-nuova-tabella').reset();
+      await caricaTabelle();
+      setTimeout(() => {
+        chiudiModaleNuovaTabella();
+      }, 1400);
+    } else {
+      errBanner.textContent = data.error || "Errore durante il salvataggio.";
+      errBanner.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error("Errore salvataggio tabella:", err);
+    errBanner.textContent = "Errore di connessione al server.";
+    errBanner.classList.remove('hidden');
+  }
+}
+
+async function caricaFileCSV() {
+  const errBanner = document.getElementById('tabella-error-banner');
+  const succBanner = document.getElementById('tabella-success-banner');
+  errBanner.classList.add('hidden');
+  succBanner.classList.add('hidden');
+  
+  const fileInput = document.getElementById('csv-file-input');
+  const textArea = document.getElementById('csv-text-area');
+  
+  let formData = null;
+  let jsonBody = null;
+  
+  if (fileInput.files && fileInput.files[0]) {
+    formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+  } else if (textArea.value.trim()) {
+    jsonBody = JSON.stringify({ csv_text: textArea.value.trim() });
+  } else {
+    errBanner.textContent = "Seleziona un file .csv oppure incolla del testo CSV.";
+    errBanner.classList.remove('hidden');
+    return;
+  }
+  
+  try {
+    const options = formData 
+      ? { method: 'POST', body: formData }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: jsonBody };
+      
+    const res = await fetch('/api/tabelle/upload-csv', options);
+    const data = await res.json();
+    
+    if (data.success) {
+      succBanner.textContent = data.message || `${data.count} righe importate con successo!`;
+      succBanner.classList.remove('hidden');
+      textArea.value = '';
+      fileInput.value = '';
+      await caricaTabelle();
+      setTimeout(() => {
+        chiudiModaleNuovaTabella();
+      }, 1600);
+    } else {
+      errBanner.textContent = data.error || "Errore durante l'importazione CSV.";
+      errBanner.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error("Errore upload CSV:", err);
+    errBanner.textContent = "Errore di connessione durante l'upload CSV.";
+    errBanner.classList.remove('hidden');
+  }
+}
+
+async function eliminaDatoTabella(id) {
+  if (!confirm("Confermi l'eliminazione di questo riferimento balistico dal database?")) return;
+  try {
+    const res = await fetch(`/api/tabelle/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      await caricaTabelle();
+    } else {
+      alert(data.error || "Impossibile eliminare il dato.");
+    }
+  } catch (err) {
+    console.error("Errore cancellazione tabella:", err);
+    alert("Errore di connessione durante la cancellazione.");
   }
 }
 

@@ -28,19 +28,30 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Tabelle Ricarica Ufficiali CIP
+    # Tabelle Ricarica Ufficiali CIP e Personalizzate Utente
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tabelle_ricarica (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER REFERENCES utenti(id),
         calibro TEXT NOT NULL,
         produttore_polvere TEXT,
         tipo_polvere TEXT,
         peso_palla_grani REAL,
         dose_min_grani REAL,
         dose_max_grani REAL,
-        oal_consigliato REAL
+        oal_consigliato REAL,
+        note TEXT
     )
     ''')
+    
+    # Migrazione per tabelle_ricarica (user_id e note)
+    cursor.execute("PRAGMA table_info(tabelle_ricarica)")
+    colonne_tabelle = [row['name'] for row in cursor.fetchall()]
+    if 'user_id' not in colonne_tabelle:
+        cursor.execute("ALTER TABLE tabelle_ricarica ADD COLUMN user_id INTEGER REFERENCES utenti(id)")
+    if 'note' not in colonne_tabelle:
+        cursor.execute("ALTER TABLE tabelle_ricarica ADD COLUMN note TEXT")
+
     
     # Utenti / Operatori
     cursor.execute('''
@@ -336,25 +347,215 @@ def user_presets():
     return jsonify({'success': True, 'presets': None})
 
 # ==========================================
-# API TABELLE DI RICARICA UFFICIALI (PUBBLICHE)
+# API TABELLE DI RICARICA (CIP + PERSONALIZZATE)
 # ==========================================
-@app.route('/api/tabelle', methods=['GET'])
-def get_tabelle():
-    calibro = request.args.get('calibro')
+@app.route('/api/tabelle', methods=['GET', 'POST'])
+def handle_tabelle():
+    user_id = session.get('user_id')
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or request.form
+        calibro = (data.get('calibro') or '').strip()
+        produttore = (data.get('produttore_polvere') or '').strip()
+        tipo = (data.get('tipo_polvere') or '').strip()
+        
+        if not calibro or not tipo:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Calibro e Tipo Polvere sono campi obbligatori.'}), 400
+            
+        try:
+            peso_palla = float(data.get('peso_palla_grani') or 0)
+            dose_min = float(data.get('dose_min_grani') or 0)
+            dose_max = float(data.get('dose_max_grani') or 0)
+            oal = float(data.get('oal_consigliato') or 0)
+        except (ValueError, TypeError):
+            conn.close()
+            return jsonify({'success': False, 'error': 'I valori di peso palla, dosi e OAL devono essere numerici.'}), 400
+            
+        note = (data.get('note') or '').strip()
+        
+        cursor.execute('''
+        INSERT INTO tabelle_ricarica 
+        (user_id, calibro, produttore_polvere, tipo_polvere, peso_palla_grani, dose_min_grani, dose_max_grani, oal_consigliato, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, calibro, produttore, tipo, peso_palla, dose_min, dose_max, oal, note))
+        conn.commit()
+        new_id = cursor.lastrowid
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'id': new_id,
+            'message': f'Riferimento per {calibro} ({tipo}) registrato con successo!'
+        })
+
+    # GET
+    calibro = request.args.get('calibro')
+    query = '''
+    SELECT t.*, u.username as operatore 
+    FROM tabelle_ricarica t
+    LEFT JOIN utenti u ON t.user_id = u.id
+    '''
+    params = []
     if calibro and calibro != 'ALL':
-        cursor.execute('SELECT * FROM tabelle_ricarica WHERE calibro = ? ORDER BY produttore_polvere, tipo_polvere', (calibro,))
-    else:
-        cursor.execute('SELECT * FROM tabelle_ricarica ORDER BY calibro, produttore_polvere')
+        query += ' WHERE t.calibro = ?'
+        params.append(calibro)
+        
+    query += ' ORDER BY t.calibro, t.produttore_polvere, t.tipo_polvere'
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     
     cursor.execute('SELECT DISTINCT calibro FROM tabelle_ricarica ORDER BY calibro')
     calibri = [r[0] for r in cursor.fetchall()]
+    
+    cursor.execute('SELECT DISTINCT tipo_polvere FROM tabelle_ricarica WHERE tipo_polvere IS NOT NULL AND tipo_polvere != "" ORDER BY tipo_polvere')
+    polveri = [r[0] for r in cursor.fetchall()]
+    
+    cursor.execute('SELECT DISTINCT produttore_polvere FROM tabelle_ricarica WHERE produttore_polvere IS NOT NULL AND produttore_polvere != "" ORDER BY produttore_polvere')
+    produttori = [r[0] for r in cursor.fetchall()]
+    
     conn.close()
     
-    data = [dict(row) for row in rows]
-    return jsonify({'tabelle': data, 'calibri': calibri})
+    data = []
+    for r in rows:
+        item = dict(r)
+        item['is_custom'] = bool(r['user_id'])
+        item['can_delete'] = bool(user_id and r['user_id'] == user_id)
+        data.append(item)
+        
+    return jsonify({
+        'tabelle': data, 
+        'calibri': calibri,
+        'polveri': polveri,
+        'produttori': produttori,
+        'current_user_id': user_id
+    })
+
+@app.route('/api/tabelle/<int:item_id>', methods=['DELETE'])
+def delete_tabella(item_id):
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tabelle_ricarica WHERE id = ?', (item_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Dato non trovato nel database.'}), 404
+        
+    if row['user_id'] is None:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Le tabelle ufficiali CIP di sistema sono protette e non possono essere eliminate.'}), 403
+        
+    if not user_id or row['user_id'] != user_id:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Non sei autorizzato a eliminare questa voce.'}), 403
+        
+    cursor.execute('DELETE FROM tabelle_ricarica WHERE id = ?', (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Riferimento balistico eliminato dal database.'})
+
+@app.route('/api/tabelle/upload-csv', methods=['POST'])
+def upload_csv_tabelle():
+    user_id = session.get('user_id')
+    file = request.files.get('file')
+    csv_text = ''
+    
+    if file:
+        csv_text = file.read().decode('utf-8', errors='ignore')
+    else:
+        data = request.get_json(silent=True) or request.form
+        csv_text = data.get('csv_text', '')
+        
+    if not csv_text.strip():
+        return jsonify({'success': False, 'error': 'Nessun file o testo CSV fornito.'}), 400
+        
+    import csv
+    lines = csv_text.strip().splitlines()
+    first_line = lines[0] if lines else ''
+    delimiter = ';' if ';' in first_line and ',' not in first_line else ','
+    
+    reader = csv.reader(lines, delimiter=delimiter)
+    header = next(reader, None)
+    if not header:
+        return jsonify({'success': False, 'error': 'File CSV vuoto.'}), 400
+        
+    header_map = {}
+    for idx, col in enumerate(header):
+        cleaned = col.strip().lower().replace(' ', '_').replace('"', '').replace("'", "")
+        header_map[cleaned] = idx
+        
+    inserted_count = 0
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    for row in reader:
+        if not row or len(row) < 2:
+            continue
+            
+        def get_val(key, default=''):
+            if key in header_map and header_map[key] < len(row):
+                return row[header_map[key]].strip()
+            return default
+            
+        calibro = get_val('calibro') or (row[0].strip() if len(row) > 0 else '')
+        produttore = get_val('produttore_polvere') or get_val('produttore') or (row[1].strip() if len(row) > 1 else '')
+        tipo = get_val('tipo_polvere') or get_val('polvere') or (row[2].strip() if len(row) > 2 else '')
+        
+        if not calibro or not tipo:
+            continue
+            
+        try:
+            peso_palla = float(get_val('peso_palla_grani') or get_val('peso_palla') or (row[3] if len(row) > 3 else 0) or 0)
+        except (ValueError, TypeError):
+            peso_palla = 0.0
+            
+        try:
+            dose_min = float(get_val('dose_min_grani') or get_val('dose_min') or (row[4] if len(row) > 4 else 0) or 0)
+        except (ValueError, TypeError):
+            dose_min = 0.0
+            
+        try:
+            dose_max = float(get_val('dose_max_grani') or get_val('dose_max') or (row[5] if len(row) > 5 else 0) or 0)
+        except (ValueError, TypeError):
+            dose_max = 0.0
+            
+        try:
+            oal = float(get_val('oal_consigliato') or get_val('oal') or (row[6] if len(row) > 6 else 0) or 0)
+        except (ValueError, TypeError):
+            oal = 0.0
+            
+        note = get_val('note') or (row[7].strip() if len(row) > 7 else '')
+        
+        cursor.execute('''
+        INSERT INTO tabelle_ricarica 
+        (user_id, calibro, produttore_polvere, tipo_polvere, peso_palla_grani, dose_min_grani, dose_max_grani, oal_consigliato, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, calibro, produttore, tipo, peso_palla, dose_min, dose_max, oal, note))
+        inserted_count += 1
+        
+    conn.commit()
+    conn.close()
+    
+    return jsonify({
+        'success': True,
+        'count': inserted_count,
+        'message': f'{inserted_count} nuovi riferimenti di ricarica importati con successo nel database.'
+    })
+
+@app.route('/api/tabelle/template-csv', methods=['GET'])
+def download_csv_template():
+    csv_content = "calibro,produttore_polvere,tipo_polvere,peso_palla_grani,dose_min_grani,dose_max_grani,oal_consigliato,note\n"
+    csv_content += "6.5 Creedmoor,Reload Swiss,RS60,140.0,40.0,43.5,71.5,Palla Hornady ELD-M\n"
+    csv_content += ".300 AAC Blackout,Vihtavuori,N110,125.0,17.0,19.2,54.0,Carabina AR-15\n"
+    csv_content += ".357 Magnum,Vihtavuori,N340,158.0,7.0,8.2,40.0,Revolver canna 6 pollici\n"
+    
+    buf = io.BytesIO(csv_content.encode('utf-8'))
+    return send_file(buf, mimetype='text/csv', as_attachment=True, download_name='template_ricarica_balistica.csv')
+
 
 # ==========================================
 # API CRUD RICETTE UTENTE (ISOLATE PER OPERATORE)
@@ -699,25 +900,27 @@ def esporta_etichetta_pdf():
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(288, 144))
     
-    c_bg = HexColor("#111317")
-    c_card = HexColor("#1a1d24")
-    c_amber = HexColor("#f59e0b")
-    c_green = HexColor("#16a34a")
-    c_text = HexColor("#f3f4f6")
-    c_muted = HexColor("#9ca3af")
-    c_line = HexColor("#374151")
+    # Palette Tattica a Sfondo Grigio Chiaro (ottimizzata per stampa nitida ed etichette adesive)
+    c_bg = HexColor("#f1f5f9")        # Grigio chiaro / Light slate
+    c_card = HexColor("#e2e8f0")      # Header banner grigio chiaro accentuato
+    c_amber = HexColor("#b45309")     # Ambra scuro / ad alto contrasto
+    c_green = HexColor("#15803d")     # Verde scuro certificato CIP
+    c_text = HexColor("#0f172a")      # Testo scuro primario
+    c_muted = HexColor("#475569")     # Testo secondario ed etichette
+    c_line = HexColor("#cbd5e1")      # Linee divisorie
+    c_border = HexColor("#b45309")    # Bordo esterno e angoli tattici
     
-    # Sfondo scuro
+    # Sfondo grigio chiaro
     c.setFillColor(c_bg)
     c.rect(0, 0, 288, 144, fill=1, stroke=0)
     
     # Bordo esterno tattico con mirini angolari
-    c.setStrokeColor(c_amber)
-    c.setLineWidth(1.5)
+    c.setStrokeColor(c_border)
+    c.setLineWidth(1.2)
     c.rect(5, 5, 278, 134, fill=0, stroke=1)
     
     corner_len = 10
-    c.setLineWidth(2.5)
+    c.setLineWidth(2.2)
     c.line(5, 139, 5 + corner_len, 139)
     c.line(5, 139, 5, 139 - corner_len)
     c.line(283, 139, 283 - corner_len, 139)
@@ -807,6 +1010,7 @@ def esporta_etichetta_pdf():
     c.setStrokeColor(c_line)
     c.line(12, 36, 276, 36)
     
+    # Note / Chrono
     c.setFillColor(c_muted)
     c.setFont("Helvetica-Bold", 6.5)
     c.drawString(12, 27, "NOTE PRESTAZIONE / CHRONO:")
@@ -815,7 +1019,7 @@ def esporta_etichetta_pdf():
     safe_note = (note[:55] + '..') if len(note) > 58 else note
     c.drawString(12, 17, safe_note)
     
-    c.setFillColor(HexColor("#6b7280"))
+    c.setFillColor(HexColor("#64748b"))
     c.setFont("Helvetica", 5)
     c.drawString(12, 8, "VERIFICARE SEMPRE LE PRESSIONI MASSIME CIP/SAAMI PRIMA DELL'USO. NON SUPERARE LE DOSI MASSIME.")
     
