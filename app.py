@@ -60,10 +60,52 @@ def init_db():
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE,
         password_hash TEXT NOT NULL,
+        is_admin INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
+    # Migrazione colonna is_admin per tabella utenti
+    cursor.execute("PRAGMA table_info(utenti)")
+    colonne_utenti = [row['name'] for row in cursor.fetchall()]
+    if 'is_admin' not in colonne_utenti:
+        cursor.execute("ALTER TABLE utenti ADD COLUMN is_admin INTEGER DEFAULT 0")
+
+    # Tabella Monitoraggio Visite & Geografica
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS log_visite (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_hash TEXT NOT NULL,
+        paese TEXT DEFAULT 'Italia',
+        codice_paese TEXT DEFAULT 'IT',
+        percorso TEXT,
+        user_agent TEXT,
+        giorno TEXT DEFAULT (DATE('now')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visite_giorno ON log_visite(giorno)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visite_ip_giorno ON log_visite(ip_hash, giorno)")
+
+    # Inizializzazione Superuser Admin con Password ad Alta Sicurezza (Militare)
+    admin_user = os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_pass = os.environ.get('ADMIN_PASSWORD', 'Armory$Admin#2026!SecOps')
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@ricarica.it')
+
+    cursor.execute('SELECT id FROM utenti WHERE username = ?', (admin_user,))
+    admin_row = cursor.fetchone()
+    if not admin_row:
+        cursor.execute('''
+        INSERT INTO utenti (username, email, password_hash, is_admin)
+        VALUES (?, ?, ?, 1)
+        ''', (admin_user, admin_email, generate_password_hash(admin_pass)))
+    else:
+        # Aggiorna credenziali superuser con password sicura e garantisce flag is_admin = 1
+        cursor.execute('''
+        UPDATE utenti SET password_hash = ?, is_admin = 1 WHERE username = ?
+        ''', (generate_password_hash(admin_pass), admin_user))
+    conn.commit()
+
     # Ricette Utente Personali
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS ricette_utente (
@@ -111,6 +153,7 @@ def init_db():
         cursor.execute("ALTER TABLE impostazioni_utente ADD COLUMN costo_pacco_bossoli REAL DEFAULT 25.0")
     if 'quantita_pacco_bossoli' not in colonne_imp:
         cursor.execute("ALTER TABLE impostazioni_utente ADD COLUMN quantita_pacco_bossoli INTEGER DEFAULT 100")
+
     
     # Verifica se tabelle_ricarica è vuota e autopopola con dati reali italiani ed europei
     cursor.execute('SELECT COUNT(*) FROM tabelle_ricarica')
@@ -182,6 +225,108 @@ def init_db():
 # Inizializza il DB all'avvio
 init_db()
 
+# ==========================================
+# GEOLOCALIZZAZIONE & TRACCIAMENTO VISITATORI
+# ==========================================
+GEO_CACHE = {}
+
+COUNTRY_FLAGS = {
+    'IT': '🇮🇹', 'US': '🇺🇸', 'DE': '🇩🇪', 'FR': '🇫🇷', 'ES': '🇪🇸',
+    'CH': '🇨🇭', 'AT': '🇦🇹', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺',
+    'NL': '🇳🇱', 'PL': '🇵🇱', 'CZ': '🇨🇿', 'SE': '🇸🇪', 'NO': '🇳🇴',
+    'FI': '🇫🇮', 'BE': '🇧🇪', 'PT': '🇵🇹', 'GR': '🇬🇷', 'RO': '🇷🇴',
+    'SM': '🇸🇲', 'VA': '🇻🇦', 'BR': '🇧🇷', 'JP': '🇯🇵', 'ZA': '🇿🇦',
+    'IE': '🇮🇪', 'DK': '🇩🇰', 'HR': '🇭🇷', 'SI': '🇸🇮', 'HU': '🇭🇺'
+}
+
+COUNTRY_NAMES = {
+    'IT': 'Italia', 'US': 'Stati Uniti', 'DE': 'Germania', 'FR': 'Francia',
+    'ES': 'Spagna', 'CH': 'Svizzera', 'AT': 'Austria', 'GB': 'Regno Unito',
+    'CA': 'Canada', 'AU': 'Australia', 'NL': 'Paesi Bassi', 'PL': 'Polonia',
+    'CZ': 'Repubblica Ceca', 'SE': 'Svezia', 'NO': 'Norvegia', 'FI': 'Finlandia',
+    'BE': 'Belgio', 'PT': 'Portogallo', 'GR': 'Grecia', 'RO': 'Romania',
+    'SM': 'San Marino', 'VA': 'Città del Vaticano', 'BR': 'Brasile',
+    'JP': 'Giappone', 'ZA': 'Sudafrica', 'IE': 'Irlanda', 'DK': 'Danimarca',
+    'HR': 'Croazia', 'SI': 'Slovenia', 'HU': 'Ungheria'
+}
+
+def risolvi_paese_visitatore(ip):
+    # 1. Header Proxy/Cloudflare
+    cf_country = request.headers.get('CF-IPCountry') or request.headers.get('X-Country') or request.headers.get('X-Geo-Country')
+    if cf_country and len(cf_country) == 2 and cf_country.upper() != 'XX':
+        code = cf_country.upper()
+        return COUNTRY_NAMES.get(code, code), code
+        
+    is_private = (
+        ip.startswith('127.') or ip.startswith('192.168.') or 
+        ip.startswith('10.') or ip.startswith('172.16.') or 
+        ip in ('::1', 'localhost', '0.0.0.0')
+    )
+    
+    # 2. Lookup IP se pubblico (con cache locale in memoria)
+    if not is_private:
+        if ip in GEO_CACHE:
+            return GEO_CACHE[ip]
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"http://ip-api.com/json/{ip}?fields=status,country,countryCode",
+                headers={'User-Agent': 'TacticalReloadHub/1.0'}
+            )
+            with urllib.request.urlopen(req, timeout=1.2) as resp:
+                import json
+                res_data = json.loads(resp.read().decode('utf-8'))
+                if res_data.get('status') == 'success':
+                    paese = res_data.get('country', 'Italia')
+                    codice = res_data.get('countryCode', 'IT')
+                    GEO_CACHE[ip] = (paese, codice)
+                    return paese, codice
+        except Exception:
+            pass
+            
+    # 3. Fallback intelligente su Accept-Language
+    lang_header = request.headers.get('Accept-Language', '').lower()
+    for code in ('it', 'ch', 'de', 'fr', 'es', 'at', 'gb', 'us', 'nl', 'pl', 'cz'):
+        if code in lang_header:
+            codice = code.upper()
+            if codice == 'GB':
+                return 'Regno Unito', 'GB'
+            return COUNTRY_NAMES.get(codice, codice), codice
+            
+    return 'Italia', 'IT'
+
+@app.before_request
+def traccia_visitatore():
+    path = request.path
+    if path.startswith('/static') or path in ('/favicon.ico', '/robots.txt') or path.startswith('/api/admin'):
+        return
+        
+    try:
+        forwarded = request.headers.get('X-Forwarded-For')
+        if forwarded:
+            ip = forwarded.split(',')[0].strip()
+        else:
+            ip = request.remote_addr or '127.0.0.1'
+            
+        ip_hash = hashlib.sha256(f"tactical_ops_{ip}".encode()).hexdigest()[:16]
+        paese, codice_paese = risolvi_paese_visitatore(ip)
+        user_agent = (request.headers.get('User-Agent') or '')[:120]
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+        INSERT INTO log_visite (ip_hash, paese, codice_paese, percorso, user_agent, giorno)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ''', (ip_hash, paese, codice_paese, path[:60], user_agent, today_str))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+def admin_required():
+    return bool(session.get('user_id') and session.get('is_admin'))
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -218,8 +363,8 @@ def auth_register():
 
     pwd_hash = generate_password_hash(password)
     cursor.execute('''
-    INSERT INTO utenti (username, email, password_hash)
-    VALUES (?, ?, ?)
+    INSERT INTO utenti (username, email, password_hash, is_admin)
+    VALUES (?, ?, ?, 0)
     ''', (username, email, pwd_hash))
     conn.commit()
     user_id = cursor.lastrowid
@@ -235,11 +380,12 @@ def auth_register():
     
     session['user_id'] = user_id
     session['username'] = username
+    session['is_admin'] = False
     
     return jsonify({
         'success': True,
         'message': f'Operatore {username} registrato e connesso con successo.',
-        'user': {'id': user_id, 'username': username}
+        'user': {'id': user_id, 'username': username, 'is_admin': False}
     })
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -260,13 +406,15 @@ def auth_login():
     if not user or not check_password_hash(user['password_hash'], password):
         return jsonify({'success': False, 'error': 'Credenziali non valide. Verifica username o password.'}), 401
         
+    is_admin = bool(user['is_admin']) if 'is_admin' in user.keys() else (username == 'admin')
     session['user_id'] = user['id']
     session['username'] = user['username']
+    session['is_admin'] = is_admin
     
     return jsonify({
         'success': True,
         'message': f'Accesso autorizzato. Benvenuto Operatore {user["username"]}.',
-        'user': {'id': user['id'], 'username': user['username']}
+        'user': {'id': user['id'], 'username': user['username'], 'is_admin': is_admin}
     })
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -278,9 +426,11 @@ def auth_logout():
 def auth_me():
     user_id = session.get('user_id')
     username = session.get('username')
+    is_admin = session.get('is_admin', False)
     if user_id and username:
-        return jsonify({'authenticated': True, 'user': {'id': user_id, 'username': username}})
+        return jsonify({'authenticated': True, 'user': {'id': user_id, 'username': username, 'is_admin': is_admin}})
     return jsonify({'authenticated': False, 'user': None})
+
 
 # ==========================================
 # PRESET ECONOMICI & CALCOLI SALVATI UTENTE
@@ -1029,6 +1179,201 @@ def esporta_etichetta_pdf():
     buf.seek(0)
     filename = f"etichetta_{calibro.replace('/', '_').replace(' ', '_')}_{lotto}.pdf"
     return send_file(buf, mimetype='application/pdf', as_attachment=False, download_name=filename)
+
+# ==========================================
+# AREA RISERVATA ADMIN & DASHBOARD STATISTICHE
+# ==========================================
+@app.route('/admin')
+def admin_dashboard():
+    if not admin_required():
+        # Se non autorizzato, reindirizza con avviso o apri login
+        return render_template('index.html', admin_required=True)
+    return render_template('admin_dashboard.html')
+
+@app.route('/api/admin/stats', methods=['GET'])
+def api_admin_stats():
+    if not admin_required():
+        return jsonify({'success': False, 'error': 'Accesso riservato esclusivamente al superuser amministratore.'}), 403
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    
+    # 1. Metriche Visitatori & Traffico
+    cursor.execute('SELECT COUNT(DISTINCT ip_hash) FROM log_visite')
+    visitatori_unici_totali = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM log_visite')
+    pageviews_totali = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(DISTINCT ip_hash) FROM log_visite WHERE giorno = ?', (today_str,))
+    visitatori_oggi = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM log_visite WHERE giorno = ?', (today_str,))
+    pageviews_oggi = cursor.fetchone()[0] or 0
+    
+    cursor.execute("SELECT COUNT(DISTINCT ip_hash) FROM log_visite WHERE giorno >= DATE('now', '-7 days')")
+    visitatori_7gg = cursor.fetchone()[0] or 0
+    
+    # Trend giornaliero ultimi 7 giorni
+    cursor.execute('''
+    SELECT giorno, COUNT(DISTINCT ip_hash) as visitatori, COUNT(*) as pageviews
+    FROM log_visite
+    WHERE giorno >= DATE('now', '-7 days')
+    GROUP BY giorno
+    ORDER BY giorno ASC
+    ''')
+    trend_giornaliero = [dict(r) for r in cursor.fetchall()]
+    
+    # Rilevamento e distribuzione Nazioni visitatori
+    cursor.execute('''
+    SELECT codice_paese, paese, COUNT(DISTINCT ip_hash) as visitatori, COUNT(*) as pageviews
+    FROM log_visite
+    GROUP BY codice_paese
+    ORDER BY visitatori DESC, pageviews DESC
+    LIMIT 20
+    ''')
+    nazioni_raw = cursor.fetchall()
+    distribuzione_nazioni = []
+    for r in nazioni_raw:
+        item = dict(r)
+        code = item['codice_paese'] or 'IT'
+        item['bandiera'] = COUNTRY_FLAGS.get(code, '🌐')
+        item['paese'] = COUNTRY_NAMES.get(code, item['paese'] or code)
+        item['percentuale'] = round((item['visitatori'] / max(1, visitatori_unici_totali)) * 100, 1)
+        distribuzione_nazioni.append(item)
+        
+    # 2. Metriche Tiratori / Utenti
+    cursor.execute('SELECT COUNT(*) FROM utenti')
+    totale_utenti = cursor.fetchone()[0] or 0
+    
+    cursor.execute('''
+    SELECT u.id, u.username, u.email, u.is_admin, u.created_at,
+           COUNT(r.id) as ricette_count
+    FROM utenti u
+    LEFT JOIN ricette_utente r ON u.id = r.user_id
+    GROUP BY u.id
+    ORDER BY u.id DESC
+    LIMIT 25
+    ''')
+    utenti_recenti = [dict(r) for r in cursor.fetchall()]
+    
+    # 3. Metriche Ricette Personali
+    cursor.execute('SELECT COUNT(*) FROM ricette_utente')
+    totale_ricette = cursor.fetchone()[0] or 0
+    
+    cursor.execute('''
+    SELECT r.*, u.username as operatore
+    FROM ricette_utente r
+    LEFT JOIN utenti u ON r.user_id = u.id
+    ORDER BY r.id DESC
+    LIMIT 20
+    ''')
+    ultime_ricette = [dict(r) for r in cursor.fetchall()]
+    
+    # 4. Metriche Tabelle e Ricarica
+    cursor.execute('SELECT COUNT(*) FROM tabelle_ricarica')
+    totale_tabelle = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM tabelle_ricarica WHERE user_id IS NULL')
+    tabelle_cip = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM tabelle_ricarica WHERE user_id IS NOT NULL')
+    tabelle_custom = cursor.fetchone()[0] or 0
+    
+    cursor.execute('SELECT COUNT(*) FROM impostazioni_utente')
+    totale_preset = cursor.fetchone()[0] or 0
+    
+    # 5. Top Calibri Più Popolari
+    cursor.execute('''
+    SELECT calibro, COUNT(*) as count 
+    FROM (
+        SELECT calibro FROM ricette_utente
+        UNION ALL
+        SELECT calibro FROM tabelle_ricarica
+    )
+    WHERE calibro IS NOT NULL AND calibro != ''
+    GROUP BY calibro
+    ORDER BY count DESC
+    LIMIT 8
+    ''')
+    top_calibri = [dict(r) for r in cursor.fetchall()]
+    
+    # 6. Top Polveri Più Utilizzate
+    cursor.execute('''
+    SELECT tipo_polvere as polvere, COUNT(*) as count
+    FROM tabelle_ricarica
+    WHERE tipo_polvere IS NOT NULL AND tipo_polvere != ''
+    GROUP BY tipo_polvere
+    ORDER BY count DESC
+    LIMIT 8
+    ''')
+    top_polveri = [dict(r) for r in cursor.fetchall()]
+    
+    conn.close()
+    
+    return jsonify({
+        'success': True,
+        'kpi': {
+            'visitatori_totali': visitatori_unici_totali,
+            'pageviews_totali': pageviews_totali,
+            'visitatori_oggi': visitatori_oggi,
+            'pageviews_oggi': pageviews_oggi,
+            'visitatori_7gg': visitatori_7gg,
+            'totale_utenti': totale_utenti,
+            'totale_ricette': totale_ricette,
+            'totale_tabelle': totale_tabelle,
+            'tabelle_cip': tabelle_cip,
+            'tabelle_custom': tabelle_custom,
+            'totale_preset': totale_preset
+        },
+        'trend_giornaliero': trend_giornaliero,
+        'nazioni': distribuzione_nazioni,
+        'utenti_recenti': utenti_recenti,
+        'ultime_ricette': ultime_ricette,
+        'top_calibri': top_calibri,
+        'top_polveri': top_polveri,
+        'timestamp': datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    })
+
+@app.route('/api/admin/ricette/<int:recipe_id>', methods=['DELETE'])
+def admin_delete_ricetta(recipe_id):
+    if not admin_required():
+        return jsonify({'success': False, 'error': 'Non autorizzato'}), 403
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM ricette_utente WHERE id = ?', (recipe_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Ricetta rimossa dal moderatore.'})
+
+@app.route('/api/admin/tabelle/<int:table_id>', methods=['DELETE'])
+def admin_delete_tabella(table_id):
+    if not admin_required():
+        return jsonify({'success': False, 'error': 'Non autorizzato'}), 403
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM tabelle_ricarica WHERE id = ?', (table_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Riferimento eliminato dal database.'})
+
+@app.route('/api/admin/utenti/<int:target_user_id>', methods=['DELETE'])
+def admin_delete_utente(target_user_id):
+    if not admin_required():
+        return jsonify({'success': False, 'error': 'Non autorizzato'}), 403
+    if target_user_id == session.get('user_id'):
+        return jsonify({'success': False, 'error': 'Non puoi eliminare il tuo stesso account superuser.'}), 400
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM ricette_utente WHERE user_id = ?', (target_user_id,))
+    cursor.execute('DELETE FROM impostazioni_utente WHERE user_id = ?', (target_user_id,))
+    cursor.execute('DELETE FROM tabelle_ricarica WHERE user_id = ?', (target_user_id,))
+    cursor.execute('DELETE FROM utenti WHERE id = ?', (target_user_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Account operatore e dati associati eliminati con successo.'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5055))

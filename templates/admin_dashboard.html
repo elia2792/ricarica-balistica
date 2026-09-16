@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HQ Admin Command Center // Statistiche & Telemetria - Tactical Reload</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            tacdark: '#0a0c10',
+            tacpanel: '#11141b',
+            taccard: '#161a23',
+            tacborder: '#232a38',
+            tacamber: '#f59e0b',
+            tacgreen: '#16a34a',
+            tacblue: '#2563eb',
+            tacred: '#dc2626',
+            tacgold: '#fbbf24'
+          },
+          fontFamily: {
+            rajdhani: ['Rajdhani', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body class="bg-tacdark text-gray-200 font-sans min-h-screen flex flex-col antialiased selection:bg-tacamber selection:text-black">
+
+  <!-- ======================================================== -->
+  <!-- HEADER ADMIN COMMAND CENTER                              -->
+  <!-- ======================================================== -->
+  <header class="border-b border-tacborder bg-tacpanel/95 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded bg-tacgold/15 border border-tacgold/40 flex items-center justify-center text-tacgold shadow-lg shadow-tacgold/10">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-rajdhani font-black text-xl tracking-wider text-white uppercase">
+              HQ ADMIN COMMAND CENTER
+            </h1>
+            <span class="px-2 py-0.5 rounded bg-tacgold/20 text-tacgold border border-tacgold/50 text-[10px] font-mono font-bold uppercase tracking-wider">
+              SUPERUSER ACTIVE
+            </span>
+          </div>
+          <p class="text-[11px] text-gray-400 font-mono flex items-center gap-2">
+            <span>Telemetria Traffico & Analisi Balistica Globale</span>
+            <span class="text-gray-600">•</span>
+            <span id="stat-last-sync" class="text-gray-400">Aggiornamento...</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <button onclick="caricaStatisticheAdmin()" class="px-3 py-2 bg-tacpanel hover:bg-taccard border border-tacborder text-gray-200 text-xs font-mono font-bold rounded flex items-center gap-1.5 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-tacblue"></i>
+          <span>Aggiorna Dati</span>
+        </button>
+        <a href="/" class="px-3 py-2 bg-tacpanel hover:bg-taccard border border-tacborder text-gray-200 text-xs font-mono font-bold rounded flex items-center gap-1.5 transition">
+          <i data-lucide="external-link" class="w-3.5 h-3.5 text-tacgreen"></i>
+          <span>Torna all'Hub</span>
+        </a>
+        <button onclick="eseguiLogoutAdmin()" class="px-3 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-800/60 text-red-300 text-xs font-mono font-bold rounded flex items-center gap-1.5 transition">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Disconnetti</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- CONTENUTO PRINCIPALE                                     -->
+  <!-- ======================================================== -->
+  <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1 space-y-6">
+
+    <!-- 1. TOP LEVEL KPI CARDS (6 METRICHE) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <!-- Visitatori Unici Totali -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Visitatori Unici</span>
+          <i data-lucide="users" class="w-4 h-4 text-tacblue"></i>
+        </div>
+        <div id="kpi-visitatori-totali" class="text-2xl font-bold font-rajdhani text-white">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1 flex items-center gap-1">
+          <span id="kpi-pageviews-totali" class="text-tacblue font-bold">0</span> views tot.
+        </div>
+      </div>
+
+      <!-- Visitatori Oggi -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Visitatori Oggi</span>
+          <i data-lucide="calendar" class="w-4 h-4 text-tacgreen"></i>
+        </div>
+        <div id="kpi-visitatori-oggi" class="text-2xl font-bold font-rajdhani text-tacgreen">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1 flex items-center gap-1">
+          <span id="kpi-pageviews-oggi" class="text-white font-bold">0</span> views oggi
+        </div>
+      </div>
+
+      <!-- Visitatori 7 Giorni -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Ultimi 7 Giorni</span>
+          <i data-lucide="activity" class="w-4 h-4 text-tacamber"></i>
+        </div>
+        <div id="kpi-visitatori-7gg" class="text-2xl font-bold font-rajdhani text-tacamber">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1">Unici settimanali</div>
+      </div>
+
+      <!-- Tiratori Registrati -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Operatori / Utenti</span>
+          <i data-lucide="user-check" class="w-4 h-4 text-tacgold"></i>
+        </div>
+        <div id="kpi-totale-utenti" class="text-2xl font-bold font-rajdhani text-tacgold">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1">Account verificati</div>
+      </div>
+
+      <!-- Ricette Salvate -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Ricette Quaderno</span>
+          <i data-lucide="book-open" class="w-4 h-4 text-tacgreen"></i>
+        </div>
+        <div id="kpi-totale-ricette" class="text-2xl font-bold font-rajdhani text-white">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1">Dosi memorizzate</div>
+      </div>
+
+      <!-- Tabelle Ricarica nel DB -->
+      <div class="tac-card p-4 rounded-lg border border-tacborder bg-tacpanel relative overflow-hidden">
+        <div class="flex items-center justify-between text-gray-400 mb-1">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Database Tabelle</span>
+          <i data-lucide="database" class="w-4 h-4 text-tacblue"></i>
+        </div>
+        <div id="kpi-totale-tabelle" class="text-2xl font-bold font-rajdhani text-tacblue">0</div>
+        <div class="text-[10px] text-gray-400 font-mono mt-1">
+          <span id="kpi-tabelle-cip" class="text-gray-300">0</span> CIP / <span id="kpi-tabelle-custom" class="text-tacamber">0</span> Custom
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. GEO DISTRIBUZIONE VISITATORI & TREND GIORNALIERO -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- NAZIONI VISITATORI (7/12) -->
+      <div class="lg:col-span-7 tac-card tac-card-blue p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="globe" class="w-5 h-5 text-tacblue"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Provenienza Geografica dei Visitatori
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono" id="tot-nazioni-count">Rilevamento IP & Nazioni</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 border border-tacborder/70 rounded bg-black/40 font-mono text-xs">
+          <table class="w-full text-left">
+            <thead class="bg-taccard text-gray-400 uppercase text-[10px] border-b border-tacborder sticky top-0">
+              <tr>
+                <th class="p-2.5">Paese / Nazione</th>
+                <th class="p-2.5 text-center">Codice</th>
+                <th class="p-2.5 text-right">Visitatori</th>
+                <th class="p-2.5 text-right">Visualizzazioni</th>
+                <th class="p-2.5 text-right">Quota Traffico</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-nazioni" class="divide-y divide-tacborder/40 text-gray-300">
+              <tr>
+                <td colspan="5" class="p-4 text-center text-gray-500">Rilevamento geolocalizzazione in corso...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TREND GIORNALIERO (5/12) -->
+      <div class="lg:col-span-5 tac-card tac-card-green p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="bar-chart-3" class="w-5 h-5 text-tacgreen"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Trend Traffico Giornaliero
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono">Ultimi 7 Giorni</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 border border-tacborder/70 rounded bg-black/40 font-mono text-xs">
+          <table class="w-full text-left">
+            <thead class="bg-taccard text-gray-400 uppercase text-[10px] border-b border-tacborder sticky top-0">
+              <tr>
+                <th class="p-2.5">Data</th>
+                <th class="p-2.5 text-right">Visitatori Unici</th>
+                <th class="p-2.5 text-right">Pageviews</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-trend" class="divide-y divide-tacborder/40 text-gray-300">
+              <tr>
+                <td colspan="3" class="p-4 text-center text-gray-500">Caricamento trend...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. POPOLARITA CALIBRI & POLVERI -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- TOP CALIBRI -->
+      <div class="tac-card tac-card-amber p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="crosshair" class="w-5 h-5 text-tacamber"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Calibri Più Popolari & Ricaricati
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono">Frequenza Ricette</span>
+        </div>
+        <div id="top-calibri-bars" class="space-y-3 font-mono text-xs">
+          <div class="text-center text-gray-500 p-4">Elaborazione calibri...</div>
+        </div>
+      </div>
+
+      <!-- TOP POLVERI -->
+      <div class="tac-card tac-card-blue p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="flame" class="w-5 h-5 text-tacblue"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Polveri da Ricarica Più Utilizzate
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono">Database Dosi</span>
+        </div>
+        <div id="top-polveri-bars" class="space-y-3 font-mono text-xs">
+          <div class="text-center text-gray-500 p-4">Elaborazione polveri...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 4. GESTIONE OPERATORI & ULTIME RICETTE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- ANAGRAFICA OPERATORI (6/12) -->
+      <div class="lg:col-span-6 tac-card p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="shield" class="w-5 h-5 text-tacgold"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Registro Operatori Iscritti
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono" id="tot-utenti-badge">...</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 border border-tacborder/70 rounded bg-black/40 font-mono text-xs">
+          <table class="w-full text-left">
+            <thead class="bg-taccard text-gray-400 uppercase text-[10px] border-b border-tacborder sticky top-0">
+              <tr>
+                <th class="p-2.5">ID / Username</th>
+                <th class="p-2.5">Email</th>
+                <th class="p-2.5 text-center">Ricette</th>
+                <th class="p-2.5 text-right">Data</th>
+                <th class="p-2.5 text-right">Azione</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-utenti" class="divide-y divide-tacborder/40 text-gray-300">
+              <tr>
+                <td colspan="5" class="p-4 text-center text-gray-500">Caricamento anagrafica...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FEED ULTIME RICETTE CARICATE (6/12) -->
+      <div class="lg:col-span-6 tac-card p-5 rounded-lg border border-tacborder bg-tacpanel">
+        <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="layers" class="w-5 h-5 text-tacgreen"></i>
+            <h2 class="text-sm font-bold font-rajdhani tracking-wider text-white uppercase">
+              Ultime Ricette Salvare nel Cloud
+            </h2>
+          </div>
+          <span class="text-[11px] text-gray-400 font-mono">Feed Globale</span>
+        </div>
+
+        <div class="overflow-x-auto max-h-80 border border-tacborder/70 rounded bg-black/40 font-mono text-xs">
+          <table class="w-full text-left">
+            <thead class="bg-taccard text-gray-400 uppercase text-[10px] border-b border-tacborder sticky top-0">
+              <tr>
+                <th class="p-2.5">Calibro / Titolo</th>
+                <th class="p-2.5">Polvere / Dose</th>
+                <th class="p-2.5">Operatore</th>
+                <th class="p-2.5 text-right">Azione</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ricette" class="divide-y divide-tacborder/40 text-gray-300">
+              <tr>
+                <td colspan="4" class="p-4 text-center text-gray-500">Caricamento ricette...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-tacborder bg-tacpanel py-4 px-4 text-center text-xs font-mono text-gray-500">
+    HQ ADMIN COMMAND // TACTICAL RELOAD & BALLISTICS OPS // SICUREZZA MULTI-LAYER ATTIVA
+  </footer>
+
+  <!-- Script Dashboard Admin -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      caricaStatisticheAdmin();
+      lucide.createIcons();
+    });
+
+    async function caricaStatisticheAdmin() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (res.status === 403 || res.status === 401) {
+          alert("Sessione admin non autorizzata o scaduta.");
+          window.location.href = '/';
+          return;
+        }
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || "Errore durante il recupero delle statistiche.");
+          return;
+        }
+
+        document.getElementById('stat-last-sync').textContent = `Sincronizzato: ${data.timestamp}`;
+
+        // KPI
+        const k = data.kpi;
+        document.getElementById('kpi-visitatori-totali').textContent = k.visitatori_totali.toLocaleString();
+        document.getElementById('kpi-pageviews-totali').textContent = k.pageviews_totali.toLocaleString();
+        document.getElementById('kpi-visitatori-oggi').textContent = k.visitatori_oggi.toLocaleString();
+        document.getElementById('kpi-pageviews-oggi').textContent = k.pageviews_oggi.toLocaleString();
+        document.getElementById('kpi-visitatori-7gg').textContent = k.visitatori_7gg.toLocaleString();
+        document.getElementById('kpi-totale-utenti').textContent = k.totale_utenti.toLocaleString();
+        document.getElementById('kpi-totale-ricette').textContent = k.totale_ricette.toLocaleString();
+        document.getElementById('kpi-totale-tabelle').textContent = k.totale_tabelle.toLocaleString();
+        document.getElementById('kpi-tabelle-cip').textContent = k.tabelle_cip.toLocaleString();
+        document.getElementById('kpi-tabelle-custom').textContent = k.tabelle_custom.toLocaleString();
+        document.getElementById('tot-utenti-badge').textContent = `${k.totale_utenti} Operatori`;
+
+        // Nazioni
+        renderNazioni(data.nazioni, k.visitatori_totali);
+
+        // Trend Giornaliero
+        renderTrend(data.trend_giornaliero);
+
+        // Top Calibri & Polveri
+        renderBarre('top-calibri-bars', data.top_calibri, 'calibro', 'tacamber');
+        renderBarre('top-polveri-bars', data.top_polveri, 'polvere', 'tacblue');
+
+        // Registro Utenti
+        renderUtenti(data.utenti_recenti);
+
+        // Ultime Ricette
+        renderRicette(data.ultime_ricette);
+
+        lucide.createIcons();
+      } catch (err) {
+        console.error("Errore statistiche admin:", err);
+      }
+    }
+
+    function renderNazioni(nazioni, totVisitatori) {
+      const tbody = document.getElementById('tbody-nazioni');
+      if (!nazioni || nazioni.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 font-mono">Nessun dato di traffico registrato.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = nazioni.map(n => {
+        return `
+          <tr class="hover:bg-taccard/70 transition">
+            <td class="p-2.5 flex items-center gap-2">
+              <span class="text-base">${n.bandiera || '🌐'}</span>
+              <span class="font-bold text-white">${escapeHtml(n.paese)}</span>
+            </td>
+            <td class="p-2.5 text-center text-gray-400 font-mono">${n.codice_paese}</td>
+            <td class="p-2.5 text-right font-bold text-white">${n.visitatori.toLocaleString()}</td>
+            <td class="p-2.5 text-right text-gray-400">${n.pageviews.toLocaleString()}</td>
+            <td class="p-2.5 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <div class="w-16 bg-tacpanel rounded-full h-1.5 overflow-hidden border border-tacborder">
+                  <div class="bg-tacblue h-full" style="width: ${Math.min(100, n.percentuale)}%"></div>
+                </div>
+                <span class="text-tacblue font-bold text-[10px] w-8 text-right">${n.percentuale}%</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderTrend(trend) {
+      const tbody = document.getElementById('tbody-trend');
+      if (!trend || trend.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-500 font-mono">Nessun dato trend disponibile.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = trend.map(t => {
+        return `
+          <tr class="hover:bg-taccard/70 transition">
+            <td class="p-2.5 font-bold text-white">${escapeHtml(t.giorno)}</td>
+            <td class="p-2.5 text-right font-bold text-tacgreen">${t.visitatori.toLocaleString()}</td>
+            <td class="p-2.5 text-right text-gray-400">${t.pageviews.toLocaleString()}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderBarre(containerId, items, labelKey, colorClass) {
+      const container = document.getElementById(containerId);
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 p-4">Nessun elemento registrato.</div>';
+        return;
+      }
+
+      const maxCount = Math.max(...items.map(i => i.count), 1);
+      container.innerHTML = items.map(item => {
+        const perc = Math.round((item.count / maxCount) * 100);
+        return `
+          <div>
+            <div class="flex justify-between items-center mb-1 text-[11px]">
+              <span class="font-bold text-white">${escapeHtml(item[labelKey])}</span>
+              <span class="text-gray-400">${item.count} occorrenze</span>
+            </div>
+            <div class="w-full bg-black/60 rounded h-2 overflow-hidden border border-tacborder">
+              <div class="bg-${colorClass} h-full transition-all duration-500" style="width: ${perc}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderUtenti(utenti) {
+      const tbody = document.getElementById('tbody-utenti');
+      if (!utenti || utenti.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Nessun utente registrato.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = utenti.map(u => {
+        const isAdm = u.is_admin ? '<span class="px-1.5 py-0.5 rounded bg-tacgold/20 text-tacgold text-[9px] font-bold border border-tacgold/40">ADMIN</span>' : '<span class="px-1.5 py-0.5 rounded bg-tacborder text-gray-400 text-[9px]">TIRATORE</span>';
+        const deleteBtn = u.is_admin 
+          ? '<span class="text-[10px] text-gray-600 font-mono">Protetto</span>' 
+          : `<button onclick="eliminaUtenteDaAdmin(${u.id}, '${escapeHtml(u.username)}')" class="px-2 py-0.5 bg-red-950/40 hover:bg-red-800 text-red-400 text-[10px] rounded border border-red-800/50">Elimina</button>`;
+
+        return `
+          <tr class="hover:bg-taccard/70 transition">
+            <td class="p-2.5">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-white">#${u.id} ${escapeHtml(u.username)}</span>
+                ${isAdm}
+              </div>
+            </td>
+            <td class="p-2.5 text-gray-400">${escapeHtml(u.email || '-')}</td>
+            <td class="p-2.5 text-center font-bold text-tacgreen">${u.ricette_count}</td>
+            <td class="p-2.5 text-right text-[10px] text-gray-400">${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
+            <td class="p-2.5 text-right">${deleteBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderRicette(ricette) {
+      const tbody = document.getElementById('tbody-ricette');
+      if (!ricette || ricette.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">Nessuna ricetta nel feed.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = ricette.map(r => {
+        return `
+          <tr class="hover:bg-taccard/70 transition">
+            <td class="p-2.5">
+              <span class="font-bold text-white block">${escapeHtml(r.calibro)}</span>
+              <span class="text-[10px] text-gray-400">${escapeHtml(r.titolo_ricetta)}</span>
+            </td>
+            <td class="p-2.5">
+              <span class="text-white block">${escapeHtml(r.marca_tipo_polvere || '-')}</span>
+              <span class="text-[10px] text-tacamber font-bold">${r.dose_grani ? r.dose_grani + ' grs' : '-'}</span>
+            </td>
+            <td class="p-2.5 text-gray-300">
+              ${r.operatore ? `<span class="text-tacgreen font-bold">@${escapeHtml(r.operatore)}</span>` : '<span class="text-gray-500">Demo</span>'}
+            </td>
+            <td class="p-2.5 text-right">
+              <button onclick="eliminaRicettaDaAdmin(${r.id})" class="px-2 py-0.5 bg-red-950/40 hover:bg-red-800 text-red-400 text-[10px] rounded border border-red-800/50">
+                Elimina
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function eliminaUtenteDaAdmin(id, name) {
+      if (!confirm(`Confermi l'eliminazione dell'operatore "${name}" e di tutte le sue ricette/preset?`)) return;
+      try {
+        const res = await fetch(`/api/admin/utenti/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          caricaStatisticheAdmin();
+        } else {
+          alert(data.error || "Impossibile eliminare l'utente.");
+        }
+      } catch (err) {
+        alert("Errore di connessione.");
+      }
+    }
+
+    async function eliminaRicettaDaAdmin(id) {
+      if (!confirm("Rimuovere questa ricetta dall'archivio globale?")) return;
+      try {
+        const res = await fetch(`/api/admin/ricette/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          caricaStatisticheAdmin();
+        } else {
+          alert(data.error || "Impossibile eliminare la ricetta.");
+        }
+      } catch (err) {
+        alert("Errore di connessione.");
+      }
+    }
+
+    async function eseguiLogoutAdmin() {
+      if (!confirm("Confermi la disconnessione dalla sessione amministratore?")) return;
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

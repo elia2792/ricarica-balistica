@@ -2,10 +2,18 @@
 
 📌 LINK PRINCIPALI
 • Sito Web Online: https://ricarica-balistica.onrender.com
+• Dashboard Admin HQ: https://ricarica-balistica.onrender.com/admin
 • Repository GitHub: https://github.com/elia2792/ricarica-balistica
 • Dashboard Render: https://dashboard.render.com/web/srv-dalfquvf3r2c7394ajqg
-• Server Locale: http://127.0.0.1:5055
+• Server Locale: http://127.0.0.1:5055 (Admin locale: http://127.0.0.1:5055/admin)
 • Cartella Mac: /Users/eliadedionigi/.gemini/antigravity/scratch/ricarica_balistica
+
+🔑 CREDENZIALI SUPERUSER ADMIN (ALTA SICUREZZA)
+• Username: admin
+• Password: Armory$Admin#2026!SecOps
+• Email: admin@ricarica.it
+• Ruolo: Superuser Amministratore (accesso completo a metriche, visitatori e moderazione)
+
 
 --------------------------------------------------
 ⚙️ CARATTERISTICHE PIATTAFORMA

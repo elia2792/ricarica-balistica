@@ -38,6 +38,7 @@ function mostraStatoAutenticato(user) {
   const guestBox = document.getElementById('auth-guest-box');
   const userBox = document.getElementById('auth-user-box');
   const navUsername = document.getElementById('nav-username');
+  const btnAdmin = document.getElementById('btn-nav-admin');
   
   const guestAlert = document.getElementById('logbook-guest-alert');
   const userAlert = document.getElementById('logbook-user-alert');
@@ -50,21 +51,38 @@ function mostraStatoAutenticato(user) {
   }
   if (navUsername) navUsername.textContent = user.username;
   
+  if (btnAdmin) {
+    if (user.is_admin) {
+      btnAdmin.classList.remove('hidden');
+      btnAdmin.classList.add('flex');
+    } else {
+      btnAdmin.classList.add('hidden');
+      btnAdmin.classList.remove('flex');
+    }
+  }
+  
   if (guestAlert) guestAlert.classList.add('hidden');
   if (userAlert) {
     userAlert.classList.remove('hidden');
     userAlert.classList.add('flex');
   }
   if (logbookUsername) logbookUsername.textContent = user.username;
+  
+  lucide.createIcons();
 }
 
 function mostraStatoOspite() {
   const guestBox = document.getElementById('auth-guest-box');
   const userBox = document.getElementById('auth-user-box');
+  const btnAdmin = document.getElementById('btn-nav-admin');
   
   const guestAlert = document.getElementById('logbook-guest-alert');
   const userAlert = document.getElementById('logbook-user-alert');
   
+  if (btnAdmin) {
+    btnAdmin.classList.add('hidden');
+    btnAdmin.classList.remove('flex');
+  }
   if (userBox) {
     userBox.classList.add('hidden');
     userBox.classList.remove('flex');
@@ -76,6 +94,8 @@ function mostraStatoOspite() {
     guestAlert.classList.remove('hidden');
     guestAlert.classList.add('flex');
   }
+  
+  lucide.createIcons();
 }
 
 function apriModaleAuth(tab = 'login') {

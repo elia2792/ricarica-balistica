@@ -10,8 +10,9 @@ class TacticalReloadTestCase(unittest.TestCase):
         from app import get_db_connection
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("DELETE FROM utenti WHERE username LIKE 'operatore_%' OR username LIKE 'test_%'")
-        c.execute("DELETE FROM ricette_utente WHERE titolo_ricetta LIKE '%Alfa%' OR titolo_ricetta LIKE '%Sniper%'")
+        c.execute("DELETE FROM utenti WHERE username LIKE 'operatore_%' OR username LIKE 'test_%' OR username LIKE 'tiratore_%'")
+        c.execute("DELETE FROM ricette_utente WHERE titolo_ricetta LIKE '%Alfa%' OR titolo_ricetta LIKE '%Sniper%' OR titolo_ricetta LIKE '%Moderare%'")
+        c.execute("DELETE FROM tabelle_ricarica WHERE calibro LIKE '%Test%' OR calibro LIKE '%Custom%'")
         conn.commit()
         conn.close()
 
@@ -239,6 +240,74 @@ class TacticalReloadTestCase(unittest.TestCase):
         res_del_cip = self.client.delete('/api/tabelle/1')
         self.assertEqual(res_del_cip.status_code, 403)
 
+    def test_admin_dashboard_and_visitor_stats(self):
+        # 1. Simula visite con header di lingua e proxy
+        self.client.get('/', headers={'Accept-Language': 'it-IT,it;q=0.9', 'User-Agent': 'TestBrowser/1.0'})
+        self.client.get('/', headers={'CF-IPCountry': 'CH', 'User-Agent': 'TestBrowser/1.0'})
+        self.client.get('/', headers={'CF-IPCountry': 'US', 'User-Agent': 'TestBrowser/1.0'})
+
+        # 2. Accesso non autorizzato da ospite
+        res_stats_guest = self.client.get('/api/admin/stats')
+        self.assertEqual(res_stats_guest.status_code, 403)
+
+        # 3. Accesso da utente normale (non admin)
+        self.client.post('/api/auth/register', json={
+            'username': 'tiratore_semplice',
+            'password': 'password123'
+        })
+        res_stats_user = self.client.get('/api/admin/stats')
+        self.assertEqual(res_stats_user.status_code, 403)
+
+        # 4. Logout e Login come Superuser Admin con password ad alta sicurezza
+        self.client.post('/api/auth/logout')
+        res_admin_login = self.client.post('/api/auth/login', json={
+            'username': 'admin',
+            'password': 'Armory$Admin#2026!SecOps'
+        })
+        self.assertEqual(res_admin_login.status_code, 200)
+        data_login = json.loads(res_admin_login.data)
+        self.assertTrue(data_login['user']['is_admin'])
+
+        # 5. Accesso alla pagina HTML Dashboard Admin
+        res_dash = self.client.get('/admin')
+        self.assertEqual(res_dash.status_code, 200)
+        self.assertIn(b'HQ ADMIN COMMAND CENTER', res_dash.data)
+        self.assertIn(b'Provenienza Geografica dei Visitatori', res_dash.data)
+
+        # 6. Accesso API statistiche complete
+        res_stats = self.client.get('/api/admin/stats')
+        self.assertEqual(res_stats.status_code, 200)
+        stats = json.loads(res_stats.data)
+        self.assertTrue(stats['success'])
+
+        # Verifica KPI visitatori e metriche
+        kpi = stats['kpi']
+        self.assertGreaterEqual(kpi['visitatori_totali'], 1)
+        self.assertGreaterEqual(kpi['pageviews_totali'], 3)
+        self.assertGreaterEqual(kpi['visitatori_oggi'], 1)
+        self.assertGreaterEqual(kpi['totale_utenti'], 1)
+
+        # Verifica nazioni rilevate
+        nazioni = stats['nazioni']
+        self.assertGreaterEqual(len(nazioni), 1)
+        self.assertTrue(any(n['codice_paese'] in ('IT', 'CH', 'US') for n in nazioni))
+
+        # 7. Test eliminazione ricetta da Admin
+        # Crea ricetta con utente
+        conn = self.client.application.view_functions  # check DB connection
+        from app import get_db_connection
+        conn_db = get_db_connection()
+        cur = conn_db.cursor()
+        cur.execute("INSERT INTO ricette_utente (calibro, titolo_ricetta) VALUES ('9x19 Luger', 'Ricetta da Moderare')")
+        mod_id = cur.lastrowid
+        conn_db.commit()
+        conn_db.close()
+
+        res_del_rec = self.client.delete(f'/api/admin/ricette/{mod_id}')
+        self.assertEqual(res_del_rec.status_code, 200)
+        self.assertTrue(json.loads(res_del_rec.data)['success'])
+
 if __name__ == '__main__':
     unittest.main()
+
 
