@@ -1401,25 +1401,18 @@ Sitemap: {site_url}/sitemap.xml
 def sitemap_xml():
     """Mappa del sito XML per indicizzazione istantanea delle pagine e strumenti"""
     today = datetime.utcnow().strftime('%Y-%m-%d')
-    base_url = request.host_url.rstrip('/')
-    if '127.0.0.1' in base_url or 'localhost' in base_url:
-        site_url = 'https://ricarica-balistica.onrender.com'
-    else:
-        site_url = base_url
-
     content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>{site_url}/</loc>
+    <loc>https://ricarica-balistica.onrender.com/</loc>
     <lastmod>{today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 </urlset>"""
-    return Response(content, mimetype='application/xml')
+    resp = Response(content, mimetype='application/xml')
+    resp.headers['Content-Type'] = 'application/xml; charset=utf-8'
+    return resp
 
 @app.route('/favicon.ico')
 def favicon():
