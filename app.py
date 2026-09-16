@@ -11,7 +11,7 @@ import math
 import io
 import re
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, session
+from flask import Flask, render_template, request, jsonify, send_file, session, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
@@ -1374,6 +1374,60 @@ def admin_delete_utente(target_user_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Account operatore e dati associati eliminati con successo.'})
+
+# ============================================================
+# SEO & CRAWLER ENDPOINTS: ROBOTS.TXT, SITEMAP.XML, FAVICON
+# ============================================================
+@app.route('/robots.txt')
+def robots_txt():
+    """Direttive di crawling per motori di ricerca (Googlebot, Bingbot, ecc.)"""
+    base_url = request.host_url.rstrip('/')
+    # Fallback to production URL if behind proxy or localhost
+    if '127.0.0.1' in base_url or 'localhost' in base_url:
+        site_url = 'https://ricarica-balistica.onrender.com'
+    else:
+        site_url = base_url
+        
+    content = f"""User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/admin/
+
+Sitemap: {site_url}/sitemap.xml
+"""
+    return Response(content, mimetype='text/plain')
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Mappa del sito XML per indicizzazione istantanea delle pagine e strumenti"""
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    base_url = request.host_url.rstrip('/')
+    if '127.0.0.1' in base_url or 'localhost' in base_url:
+        site_url = 'https://ricarica-balistica.onrender.com'
+    else:
+        site_url = base_url
+
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <url>
+    <loc>{site_url}/</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>"""
+    return Response(content, mimetype='application/xml')
+
+@app.route('/favicon.ico')
+def favicon():
+    """Icona standard del sito per browser e crawler"""
+    icon_path = os.path.join(app.root_path, 'static', 'img', 'favicon.svg')
+    if os.path.exists(icon_path):
+        return send_file(icon_path, mimetype='image/svg+xml')
+    return ('', 204)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5055))

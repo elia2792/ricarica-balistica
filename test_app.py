@@ -316,6 +316,44 @@ class TacticalReloadTestCase(unittest.TestCase):
         self.assertEqual(res_del_rec.status_code, 200)
         self.assertTrue(json.loads(res_del_rec.data)['success'])
 
+    def test_seo_endpoints(self):
+        # 1. Test robots.txt
+        res_robots = self.client.get('/robots.txt')
+        self.assertEqual(res_robots.status_code, 200)
+        self.assertEqual(res_robots.mimetype, 'text/plain')
+        self.assertIn(b'User-agent: *', res_robots.data)
+        self.assertIn(b'Allow: /', res_robots.data)
+        self.assertIn(b'Disallow: /admin', res_robots.data)
+        self.assertIn(b'Sitemap:', res_robots.data)
+
+        # 2. Test sitemap.xml
+        res_sitemap = self.client.get('/sitemap.xml')
+        self.assertEqual(res_sitemap.status_code, 200)
+        self.assertEqual(res_sitemap.mimetype, 'application/xml')
+        self.assertIn(b'<urlset', res_sitemap.data)
+        self.assertIn(b'https://ricarica-balistica.onrender.com/', res_sitemap.data)
+        self.assertIn(b'<changefreq>daily</changefreq>', res_sitemap.data)
+
+        # 3. Test favicon.ico
+        res_fav = self.client.get('/favicon.ico')
+        self.assertEqual(res_fav.status_code, 200)
+        self.assertIn(b'<svg', res_fav.data)
+
+        # 4. Test Home SEO tags & Schema.org JSON-LD
+        res_home = self.client.get('/')
+        self.assertEqual(res_home.status_code, 200)
+        self.assertIn(b'<title>Ricarica Munizioni', res_home.data)
+        self.assertIn(b'name="description"', res_home.data)
+        self.assertIn(b'name="keywords"', res_home.data)
+        self.assertIn(b'name="robots"', res_home.data)
+        self.assertIn(b'rel="canonical"', res_home.data)
+        self.assertIn(b'property="og:image"', res_home.data)
+        self.assertIn(b'name="twitter:card"', res_home.data)
+        self.assertIn(b'application/ld+json', res_home.data)
+        self.assertIn(b'WebApplication', res_home.data)
+        self.assertIn(b'FAQPage', res_home.data)
+        self.assertIn(b'Guida alla Ricarica Munizioni', res_home.data)
+
 if __name__ == '__main__':
     unittest.main()
 

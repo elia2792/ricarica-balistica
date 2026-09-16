@@ -3,7 +3,129 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TACTICAL RELOAD // Ballistics Ops & Armory Logbook</title>
+  <title>Ricarica Munizioni & Balistica | Tabelle CIP, Calcolo Costi e Quaderno di Ricarica</title>
+  <meta name="description" content="Software gratuito per la ricarica di munizioni da tiro e caccia. Tabelle ufficiali CIP (Vihtavuori, Cheddite, Baschieri, Lovex), calcolatore costo reale per colpo e ammortamento attrezzatura, cronografo balistico e stampa etichette PDF.">
+  <meta name="keywords" content="ricarica munizioni, tabelle ricarica cip, calcolo costo cartuccia, quaderno di ricarica, etichette scatole munizioni pdf, balistica tiro dinamico, fattore ipsc minor major, deviazione standard cronografo, dosi polvere, vihtavuori, cheddite, 9x21, 9x19, 223 remington, 308 winchester, oal cartuccia">
+  <meta name="author" content="Ballistic Ops - Tactical Reload Hub">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://ricarica-balistica.onrender.com/">
+
+  <!-- Theme & Mobile App Manifest -->
+  <meta name="theme-color" content="#0f1115">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ballistic Ops">
+
+  <!-- Favicon & Touch Icons -->
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/img/apple-touch-icon.png">
+
+  <!-- Preconnect & Resource Hints -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+
+  <!-- Open Graph / Facebook / WhatsApp / Telegram -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="it_IT">
+  <meta property="og:site_name" content="Ballistic Ops // Hub Ricarica Munizioni">
+  <meta property="og:url" content="https://ricarica-balistica.onrender.com/">
+  <meta property="og:title" content="Ricarica Munizioni & Calcolatore Balistico | Tabelle CIP e Quaderno di Tiro">
+  <meta property="og:description" content="Calcola il costo esatto per colpo ricaricato, consulta le dosi CIP ufficiali, archivia le tue ricette e genera etichette PDF pronte per la stampa.">
+  <meta property="og:image" content="https://ricarica-balistica.onrender.com/static/img/og-preview.png">
+  <meta property="og:image:secure_url" content="https://ricarica-balistica.onrender.com/static/img/og-preview.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ballistic Ops - Portale Balistico e Ricarica Munizioni">
+
+  <!-- Twitter / X Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://ricarica-balistica.onrender.com/">
+  <meta name="twitter:title" content="Ricarica Munizioni & Calcolatore Balistico | Tabelle CIP">
+  <meta name="twitter:description" content="Database tabelle CIP, calcolo costo cartuccia, quaderno di tiro e stampa etichette munizioni in PDF.">
+  <meta name="twitter:image" content="https://ricarica-balistica.onrender.com/static/img/og-preview.png">
+
+  <!-- JSON-LD Structured Data: WebApplication & FAQPage Rich Snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://ricarica-balistica.onrender.com/#webapp",
+        "url": "https://ricarica-balistica.onrender.com/",
+        "name": "Ballistic Ops - Hub Ricarica Munizioni & Balistica",
+        "description": "Software balistico online per tiratori e ricaricatori: tabelle CIP ufficiali, calcolo costo cartuccia e ammortamento attrezzatura, cronografo statistico, quaderno ricette ed esportazione etichette PDF.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "All (Web Browser, Mobile, Desktop)",
+        "inLanguage": "it-IT",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        "featureList": [
+          "Tabelle di ricarica ufficiali CIP e cariche personalizzate utente",
+          "Calcolatore del costo reale per singolo colpo e risparmio",
+          "Analisi ammortamento pressa e attrezzatura da ricarica",
+          "Fattore di potenza IPSC (Power Factor) ed energia cinetica in Joule",
+          "Analizzatore deviazione standard (SD) ed Extreme Spread al cronografo",
+          "Generazione ed esportazione etichette PDF per scatole munizioni 50/100 colpi"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ricarica-balistica.onrender.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Come si calcola il costo di una munizione ricaricata?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Il costo per singola cartuccia ricaricata è dato dalla somma dei costi dei singoli componenti: costo palla (costo pacco diviso quantità), costo innesco, costo polvere (calcolato dal costo del barattolo rapportato ai grani impiegati, sapendo che 1 kg = 15432.4 grani) e quota ammortamento bossolo in base al numero stimato di riutilizzi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quali dati forniscono le tabelle di ricarica CIP?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Le tabelle ufficiali CIP forniscono i limiti di sicurezza: calibro, peso della palla in grani, tipo e produttore di propellente, dose minima di partenza, dose massima da non superare mai, e quota O.A.L. (lunghezza complessiva della cartuccia finita in millimetri) per prevenire picchi pressori pericolosi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Come si calcola l'ammortamento della pressa e dell'attrezzatura di ricarica?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Confrontando il costo di produzione al singolo colpo ricaricato con il prezzo di mercato di una cartuccia commerciale equivalente, il software calcola il risparmio netto per colpo e determina esattamente quante cartucce è necessario sparare per ripagare l'investimento iniziale di pressa, dies, bilancina e accessori."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Come funziona la generazione di etichette PDF per le scatole di cartucce?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Selezionando una ricetta dal quaderno o inserendo i parametri balistici, è possibile scaricare istantaneamente un PDF con etichette standard ad alto contrasto su sfondo chiaro a risparmio toner, complete di calibro, lotto, polvere, dose, innesco, OAL e data per l'applicazione su scatole MTM o Plano da 50 o 100 colpi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Come valutare la costanza balistica di una ricarica con il cronografo?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Inserendo la serie di velocità registrate al cronografo (in metri al secondo o piedi al secondo), l'analizzatore statistico calcola velocità media, Deviazione Standard (SD) ed Extreme Spread (ES). Un valore di SD inferiore a 3 m/s o 10 fps indica munizioni Match Grade ad altissima costanza balistica."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -42,13 +164,13 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold font-rajdhani tracking-wider text-white uppercase">
-              BALLISTIC OPS <span class="text-tacamber">//</span> ARMORY HUB
+              BALLISTIC OPS <span class="text-tacamber">//</span> RICARICA MUNIZIONI & BALISTICA
             </h1>
             <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40">
               v2.4 MIL-SPEC
             </span>
           </div>
-          <p class="text-xs text-gray-400 font-mono">Aggregatore Balistico • Calcolatore Ammortamento • Quaderno Ricarica</p>
+          <p class="text-xs text-gray-400 font-mono">Tabelle CIP • Calcolo Costo Cartuccia • Quaderno di Ricarica • Etichette PDF</p>
         </div>
       </div>
 
@@ -614,6 +736,136 @@
 
       </div>
     </div>
+
+    <!-- ==================================================== -->
+    <!-- GUIDA TECNICA BALISTICA, TABELLE CIP & FAQ (SEO)     -->
+    <!-- ==================================================== -->
+    <section id="guida-faq-seo" class="mt-8 border border-tacborder/80 bg-tacpanel/80 rounded-lg p-5 sm:p-6 shadow-xl font-mono">
+      <div class="flex flex-wrap items-center justify-between border-b border-tacborder pb-4 mb-4 gap-2">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded bg-tacgreen/20 border border-tacgreen/40 flex items-center justify-center text-tacgreen">
+            <i data-lucide="book-open" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold font-rajdhani tracking-wider text-white uppercase">
+              Guida alla Ricarica Munizioni, Tabelle CIP &amp; Domande Frequenti (FAQ)
+            </h2>
+            <p class="text-xs text-gray-400">Riferimenti tecnici su dosaggi polvere, standard C.I.P. e analisi economica del colpo ricaricato</p>
+          </div>
+        </div>
+        <span class="text-[10px] px-2.5 py-1 rounded bg-black/60 border border-tacborder text-tacamber uppercase font-bold">
+          DOCS // FAQ
+        </span>
+      </div>
+
+      <div class="space-y-3">
+        <!-- FAQ 1: Tabelle CIP e Dosi -->
+        <details class="group bg-black/40 border border-tacborder rounded-lg overflow-hidden transition" open>
+          <summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 text-sm font-bold font-rajdhani text-white uppercase tracking-wider select-none">
+            <div class="flex items-center gap-2">
+              <i data-lucide="crosshair" class="w-4 h-4 text-tacblue"></i>
+              <span>1. Come consultare le Tabelle di Ricarica CIP e determinare la Carica di Lancio?</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="px-4 pb-4 text-xs text-gray-300 leading-relaxed space-y-2 border-t border-tacborder/40 pt-3">
+            <p>
+              Le <strong>tabelle di ricarica ufficiali C.I.P.</strong> (Commission Internationale Permanente) e dei fabbricanti di propellenti (come <em>Vihtavuori, Cheddite, Baschieri &amp; Pellagri, Lovex, Reload Swiss, Hodgdon</em>) stabiliscono i parametri dimensionali e barometrici di sicurezza per ciascun calibro:
+            </p>
+            <ul class="list-disc pl-5 space-y-1 text-gray-400">
+              <li><strong>Dose Minima di Partenza (Start Load):</strong> la carica propellente raccomandata con cui avviare sempre i test per una specifica combinazione di palla e innesco.</li>
+              <li><strong>Dose Massima (Max Load):</strong> il limite assoluto di grani da <u>non superare mai</u>, oltre il quale si rischiano pericolose sovrapressioni che possono danneggiare l'arma o ferire il tiratore.</li>
+              <li><strong>O.A.L. Consigliato (Overall Length):</strong> la lunghezza complessiva della cartuccia finita in millimetri. Un O.A.L. troppo corto riduce il volume interno del bossolo, provocando un aumento esponenziale della pressione a parità di dose.</li>
+              <li><strong>Pesi Palla in Grani (Grains):</strong> 1 grammo corrisponde a circa 15.432 grani (gn/grs). Il peso dell'ogiva incide direttamente sulla pressione e sulla velocità di uscita.</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- FAQ 2: Calcolo Costi e Risparmio -->
+        <details class="group bg-black/40 border border-tacborder rounded-lg overflow-hidden transition">
+          <summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 text-sm font-bold font-rajdhani text-white uppercase tracking-wider select-none">
+            <div class="flex items-center gap-2">
+              <i data-lucide="dollar-sign" class="w-4 h-4 text-tacgreen"></i>
+              <span>2. Come calcolare il Costo Reale per Cartuccia e l'Ammortamento della Pressa?</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="px-4 pb-4 text-xs text-gray-300 leading-relaxed space-y-2 border-t border-tacborder/40 pt-3">
+            <p>
+              La ricarica domestica permette di abbattere sensibilmente i costi di allenamento per il tiro sportivo (IPSC, IDPA, Tiro a Segno Nazionale TSN, tiro dinamico e caccia). Il costo per singolo colpo viene calcolato attraverso la formula:
+            </p>
+            <div class="p-2.5 bg-black/70 border border-tacborder rounded text-[11px] text-tacamber font-mono">
+              Costo Colpo (€) = Costo Palla + Costo Innesco + (Dose in Grani &times; Costo Polvere per Grano) + (Costo Bossolo / Numero Riutilizzi)
+            </div>
+            <p>
+              Confrontando questo valore con il prezzo di una cartuccia di fabbrica commerciale (box da 50 colpi), si ottiene il <strong>risparmio netto per colpo</strong>. L'<strong>analisi di ammortamento</strong> divide il costo totale sostenuto per la pressa (monostazione o progressiva come Dillon, Lee, Hornady), i dies, la bilancina centesimale e il dosatore per il risparmio a colpo, indicando l'esatto numero di cartucce da assemblare per rientrare dell'investimento.
+            </p>
+          </div>
+        </details>
+
+        <!-- FAQ 3: Cronografo e Power Factor IPSC -->
+        <details class="group bg-black/40 border border-tacborder rounded-lg overflow-hidden transition">
+          <summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 text-sm font-bold font-rajdhani text-white uppercase tracking-wider select-none">
+            <div class="flex items-center gap-2">
+              <i data-lucide="activity" class="w-4 h-4 text-tacblue"></i>
+              <span>3. Fattore di Potenza IPSC (Power Factor) e Deviazione Standard al Cronografo</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="px-4 pb-4 text-xs text-gray-300 leading-relaxed space-y-2 border-t border-tacborder/40 pt-3">
+            <p>
+              Per le competizioni di tiro dinamico (IPSC, FITDS, USPSA), il <strong>Power Factor (PF)</strong> classifica la munizione in categoria <em>Minor</em> o <em>Major</em>:
+            </p>
+            <div class="p-2.5 bg-black/70 border border-tacborder rounded text-[11px] text-tacgreen font-mono">
+              Power Factor = [Peso Palla (grani) &times; Velocità (fps)] / 1000
+            </div>
+            <p>
+              L'<strong>analizzatore cronografico integrato</strong> calcola la <strong>Deviazione Standard (SD)</strong> e l'<strong>Extreme Spread (ES)</strong> da una serie di spari: un valore di SD inferiore a 3 m/s (o 10 fps) certifica una ricarica <em>Match Grade</em> ad alta regolarità, garanzia di rosate strette e costanza ad ogni distanza.
+            </p>
+          </div>
+        </details>
+
+        <!-- FAQ 4: Norme di Sicurezza e Sovrapressione -->
+        <details class="group bg-black/40 border border-tacborder rounded-lg overflow-hidden transition">
+          <summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 text-sm font-bold font-rajdhani text-white uppercase tracking-wider select-none">
+            <div class="flex items-center gap-2">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-tacamber"></i>
+              <span>4. Quali sono i segnali di Sovrapressione e le Regole Fondamentali di Sicurezza?</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="px-4 pb-4 text-xs text-gray-300 leading-relaxed space-y-2 border-t border-tacborder/40 pt-3">
+            <p>
+              La prudenza è l'elemento essenziale di ogni banco di caricamento:
+            </p>
+            <ul class="list-disc pl-5 space-y-1 text-gray-400">
+              <li><strong>Iniziare sempre dalla dose minima:</strong> aumentare di 0.2 - 0.5 grani alla volta esaminando ciascun bossolo sparato.</li>
+              <li><strong>Segnali di sovrapressione:</strong> appiattimento evidente della coppetta dell'innesco (flattening), craterizzazione del metallo attorno all'impronta del percussore, estrazione dura dell'otturatore o espansione della gola del fondello.</li>
+              <li><strong>Conservazione corretta:</strong> custodire i propellenti e gli inneschi nei loro contenitori originali, in ambienti asciutti, freschi e lontani da fonti di calore, scintille e scariche elettrostatiche.</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- FAQ 5: Etichette PDF per Scatole Munizioni -->
+        <details class="group bg-black/40 border border-tacborder rounded-lg overflow-hidden transition">
+          <summary class="flex items-center justify-between p-3.5 cursor-pointer hover:bg-white/5 text-sm font-bold font-rajdhani text-white uppercase tracking-wider select-none">
+            <div class="flex items-center gap-2">
+              <i data-lucide="tag" class="w-4 h-4 text-purple-400"></i>
+              <span>5. Come stampare le Etichette Tecniche PDF per le Scatole di Munizioni?</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="px-4 pb-4 text-xs text-gray-300 leading-relaxed space-y-2 border-t border-tacborder/40 pt-3">
+            <p>
+              Identificare con precisione ogni lotto ricaricato evita confusioni pericolose al poligono. Tramite il pulsante <strong>"STAMPA ETICHETTA PDF"</strong> nel quaderno ricette o dal menu rapido, il sistema genera un foglio PDF vettoriale con griglia dimensionata su sfondo chiaro a risparmio inchiostro/toner.
+            </p>
+            <p>
+              Ogni etichetta include calibro, matricola lotto, tipo e peso palla, propellente e dose esatta, marca innesco, misura O.A.L., data di caricamento e campo note per le verifiche sul campo.
+            </p>
+          </div>
+        </details>
+      </div>
+    </section>
   </main>
 
   <!-- ======================================================== -->
