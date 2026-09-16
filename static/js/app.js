@@ -6,6 +6,7 @@ let tabAuthAttivo = 'login';
 
 document.addEventListener('DOMContentLoaded', () => {
   verificaStatoAutenticazione();
+  inizializzaDisclaimer();
   caricaTabelle();
   caricaRicette();
   calcolaCostoLive();
@@ -973,3 +974,33 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ==========================================
+// GESTIONE MINIMIZZAZIONE DISCLAIMER LEGALE
+// ==========================================
+function inizializzaDisclaimer() {
+  const stato = localStorage.getItem('disclaimer_collapsed');
+  if (stato === '1') {
+    toggleDisclaimer(true);
+  }
+}
+
+function toggleDisclaimer(collapse) {
+  const fullContent = document.getElementById('disclaimer-full-content');
+  const collapsedBar = document.getElementById('disclaimer-collapsed-bar');
+  if (!fullContent || !collapsedBar) return;
+  
+  if (collapse) {
+    fullContent.classList.add('hidden');
+    collapsedBar.classList.remove('hidden');
+    collapsedBar.classList.add('flex');
+    localStorage.setItem('disclaimer_collapsed', '1');
+  } else {
+    collapsedBar.classList.add('hidden');
+    collapsedBar.classList.remove('flex');
+    fullContent.classList.remove('hidden');
+    localStorage.removeItem('disclaimer_collapsed');
+  }
+  lucide.createIcons();
+}
+
