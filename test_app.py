@@ -353,6 +353,12 @@ class TacticalReloadTestCase(unittest.TestCase):
         self.assertIn(b'WebApplication', res_home.data)
         self.assertIn(b'FAQPage', res_home.data)
         self.assertIn(b'Guida alla Ricarica Munizioni', res_home.data)
+        self.assertIn(b'googlec4d8d72365b0f7d7', res_home.data)
+
+        # 5. Test Google Search Console Verification File
+        res_gsc = self.client.get('/googlec4d8d72365b0f7d7.html')
+        self.assertEqual(res_gsc.status_code, 200)
+        self.assertIn(b'google-site-verification: googlec4d8d72365b0f7d7.html', res_gsc.data)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1429,6 +1429,11 @@ def favicon():
         return send_file(icon_path, mimetype='image/svg+xml')
     return ('', 204)
 
+@app.route('/googlec4d8d72365b0f7d7.html')
+def google_search_console_verification():
+    """Verifica di proprietà per Google Search Console"""
+    return Response('google-site-verification: googlec4d8d72365b0f7d7.html', mimetype='text/html')
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5055))
     print(f"[*] Avvio Tactical Reload & Ballistics Hub su http://127.0.0.1:{port}")
