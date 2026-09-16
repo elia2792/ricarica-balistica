@@ -13,6 +13,15 @@ class TacticalReloadTestCase(unittest.TestCase):
         c.execute("DELETE FROM utenti WHERE username LIKE 'operatore_%' OR username LIKE 'test_%' OR username LIKE 'tiratore_%'")
         c.execute("DELETE FROM ricette_utente WHERE titolo_ricetta LIKE '%Alfa%' OR titolo_ricetta LIKE '%Sniper%' OR titolo_ricetta LIKE '%Moderare%'")
         c.execute("DELETE FROM tabelle_ricarica WHERE calibro LIKE '%Test%' OR calibro LIKE '%Custom%'")
+        c.execute("DELETE FROM log_visite")
+        conn.commit()
+        conn.close()
+
+    def tearDown(self):
+        from app import get_db_connection
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("DELETE FROM log_visite")
         conn.commit()
         conn.close()
 
