@@ -5,6 +5,10 @@ let operatoreCorrente = null;
 let tabAuthAttivo = 'login';
 
 document.addEventListener('DOMContentLoaded', () => {
+  const initialLang = typeof getInitialLanguage === 'function' ? getInitialLanguage() : 'it';
+  if (typeof applicaTraduzioni === 'function') {
+    applicaTraduzioni(initialLang);
+  }
   verificaStatoAutenticazione();
   inizializzaDisclaimer();
   caricaTabelle();
@@ -313,20 +317,26 @@ async function caricaTabelle() {
     countSpan.textContent = `${data.tabelle.length} Riferimenti nel Database`;
     
     if (data.tabelle.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-mono">Nessun dato per questo calibro. Usa il pulsante "+ Calibro / Polvere" per aggiungerlo!</td></tr>`;
+      const emptyMsg = typeof t === 'function' ? t('tb_empty') : 'Nessun dato per questo calibro.';
+      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 font-mono">${emptyMsg}</td></tr>`;
       return;
     }
     
+    const badgeCustomTxt = typeof t === 'function' ? t('tb_custom_badge') : 'CUSTOM';
+    const badgeCipTxt = typeof t === 'function' ? t('tb_cip_badge') : 'CIP';
+    const useBtnTxt = typeof t === 'function' ? t('tb_use_btn') : 'Usa';
+    const delTitleTxt = typeof t === 'function' ? t('tb_delete_title') : 'Elimina dato ricarica';
+
     tbody.innerHTML = data.tabelle.map(row => {
       const badge = row.is_custom 
-        ? `<span class="px-1.5 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40 text-[9px] font-bold">CUSTOM</span>` 
-        : `<span class="px-1.5 py-0.5 rounded bg-tacblue/20 text-tacblue border border-tacblue/40 text-[9px] font-bold">CIP</span>`;
+        ? `<span class="px-1.5 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40 text-[9px] font-bold">${badgeCustomTxt}</span>` 
+        : `<span class="px-1.5 py-0.5 rounded bg-tacblue/20 text-tacblue border border-tacblue/40 text-[9px] font-bold">${badgeCipTxt}</span>`;
       
       const opInfo = row.operatore ? `<span class="text-[9px] text-gray-500 font-mono block">By ${escapeHtml(row.operatore)}</span>` : '';
       const noteBadge = row.note ? `<span class="text-[10px] text-gray-400 italic block mt-0.5" title="${escapeHtml(row.note)}">📝 ${escapeHtml(row.note)}</span>` : '';
       
       const btnDelete = row.can_delete 
-        ? `<button onclick="eliminaDatoTabella(${row.id})" title="Elimina dato ricarica" class="px-2 py-1 bg-red-950/40 hover:bg-red-800 text-red-400 hover:text-white border border-red-800/60 text-[10px] font-bold rounded uppercase transition ml-1">
+        ? `<button onclick="eliminaDatoTabella(${row.id})" title="${delTitleTxt}" class="px-2 py-1 bg-red-950/40 hover:bg-red-800 text-red-400 hover:text-white border border-red-800/60 text-[10px] font-bold rounded uppercase transition ml-1">
              <i data-lucide="trash-2" class="w-3 h-3"></i>
            </button>` 
         : '';
@@ -358,7 +368,7 @@ async function caricaTabelle() {
           <td class="p-2.5 text-right whitespace-nowrap">
             <button onclick="usaInRicetta('${escapeHtml(row.calibro)}', '${escapeHtml(row.produttore_polvere || '')} ${escapeHtml(row.tipo_polvere)}'.trim(), ${row.dose_max_grani || 0}, ${row.dose_min_grani || 0}, ${row.peso_palla_grani || 0}, ${row.oal_consigliato || 0})" 
                     class="px-2.5 py-1 bg-tacblue/20 hover:bg-tacblue text-tacblue hover:text-white border border-tacblue/50 text-[10px] font-bold rounded uppercase transition">
-              Usa
+              ${useBtnTxt}
             </button>
             ${btnDelete}
           </td>
@@ -571,10 +581,15 @@ async function caricaRicette() {
     
     countLabel.textContent = `${data.ricette.length} Ricette ${data.is_authenticated ? '(Account Privato)' : '(Demo)'}`;
     
+    const noRecTxt = typeof t === 'function' ? t('no_recipes') : 'Nessuna ricetta presente.';
+    const btnLoadTxt = typeof t === 'function' ? t('btn_load') : 'Carica';
+    const btnDelTxt = typeof t === 'function' ? t('btn_delete') : 'Elimina';
+    const btnPdfTxt = typeof t === 'function' ? t('btn_pdf_label') : 'Esporta Etichetta PDF';
+
     if (data.ricette.length === 0) {
       container.innerHTML = `
         <div class="text-center py-6 text-gray-500 font-mono text-xs border border-dashed border-tacborder rounded p-4">
-          Nessuna ricetta presente. Compila il modulo per creare il tuo primo lotto di ricarica.
+          ${noRecTxt}
         </div>
       `;
       return;
@@ -595,7 +610,7 @@ async function caricaRicette() {
               </div>
               <div class="text-[11px] text-gray-300 font-mono mt-1">
                 <span class="text-tacamber font-bold">${r.dose_grani ? r.dose_grani.toFixed(1) + ' grs' : '-'}</span>
-                <span class="text-gray-400">di</span> ${escapeHtml(r.marca_tipo_polvere || 'Polvere')} 
+                <span class="text-gray-400">/</span> ${escapeHtml(r.marca_tipo_polvere || 'Polvere')} 
                 • <span class="text-gray-400">Palla:</span> ${escapeHtml(r.marca_peso_palla || '-')} 
                 • <span class="text-gray-400">OAL:</span> ${r.oal_scelto ? r.oal_scelto.toFixed(2) + ' mm' : '-'}
               </div>
@@ -604,13 +619,13 @@ async function caricaRicette() {
 
             <!-- Azioni Rapide -->
             <div class="flex items-center gap-1.5 flex-shrink-0">
-              <button onclick="stampaEtichetta(${r.id})" title="Esporta Etichetta PDF" class="p-1.5 rounded bg-tacamber/20 hover:bg-tacamber text-tacamber hover:text-black border border-tacamber/40 transition">
+              <button onclick="stampaEtichetta(${r.id})" title="${btnPdfTxt}" class="p-1.5 rounded bg-tacamber/20 hover:bg-tacamber text-tacamber hover:text-black border border-tacamber/40 transition">
                 <i data-lucide="printer" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="caricaRicettaInForm(${r.id})" title="Carica / Modifica" class="p-1.5 rounded bg-tacborder hover:bg-gray-700 text-gray-300 transition">
+              <button onclick="caricaRicettaInForm(${r.id})" title="${btnLoadTxt}" class="p-1.5 rounded bg-tacborder hover:bg-gray-700 text-gray-300 transition">
                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="eliminaRicetta(${r.id})" title="Elimina" class="p-1.5 rounded bg-red-950/40 hover:bg-red-900 text-red-400 border border-red-800/40 transition">
+              <button onclick="eliminaRicetta(${r.id})" title="${btnDelTxt}" class="p-1.5 rounded bg-red-950/40 hover:bg-red-900 text-red-400 border border-red-800/40 transition">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
             </div>
@@ -887,24 +902,28 @@ function calcolaBalisticaLive() {
   document.getElementById('b-res-ms').textContent = ms.toFixed(1);
   
   const badge = document.getElementById('b-status-badge');
+  const txtMajor = typeof t === 'function' ? t('ipsc_major') : "MAJOR // MASSIMA POTENZA";
+  const txtMinor = typeof t === 'function' ? t('ipsc_minor') : "MINOR // IDONEO GARA";
+  const txtSubMinor = typeof t === 'function' ? t('ipsc_subminor') : "SUB-MINOR // NON QUALIFICATO";
+
   if (pf >= 170) {
-    badge.textContent = "MAJOR // MASSIMA POTENZA";
+    badge.textContent = txtMajor;
     badge.className = "font-bold px-2 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40";
   } else if (pf >= 160) {
     badge.textContent = "MAJOR OPEN / MINOR STD";
     badge.className = "font-bold px-2 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40";
   } else if (pf >= 125) {
-    badge.textContent = "MINOR // IDONEO GARA";
+    badge.textContent = txtMinor;
     badge.className = "font-bold px-2 py-0.5 rounded bg-tacgreen/20 text-tacgreen border border-tacgreen/40";
   } else {
-    badge.textContent = "SUB-MINOR // NON QUALIFICATO";
+    badge.textContent = txtSubMinor;
     badge.className = "font-bold px-2 py-0.5 rounded bg-red-950/40 text-red-400 border border-red-800/40";
   }
   
   document.getElementById('ipsc-open').textContent = pf >= 160 ? 'MAJOR (>=160)' : (pf >= 125 ? 'MINOR' : 'SUB-MINOR');
   document.getElementById('ipsc-standard').textContent = pf >= 170 ? 'MAJOR (>=170)' : (pf >= 125 ? 'MINOR' : 'SUB-MINOR');
-  document.getElementById('ipsc-production').textContent = pf >= 125 ? 'MINOR (Idoneo)' : 'SUB-MINOR';
-  document.getElementById('ipsc-pcc').textContent = pf >= 125 ? 'REGOLAMENTARE (>=125)' : 'SUB-MINOR';
+  document.getElementById('ipsc-production').textContent = pf >= 125 ? 'MINOR' : 'SUB-MINOR';
+  document.getElementById('ipsc-pcc').textContent = pf >= 125 ? 'MAJOR/LEGAL (>=125)' : 'SUB-MINOR';
 }
 
 // ==========================================
@@ -939,7 +958,15 @@ async function calcolaSD() {
       
       const giudizioLabel = document.getElementById('sd-giudizio');
       const box = document.getElementById('chrono-giudizio-box');
-      giudizioLabel.textContent = data.giudizio;
+
+      // Localized SD text
+      let localizedGiudizio = data.giudizio;
+      if (typeof t === 'function') {
+        if (data.giudizio_color === 'green') localizedGiudizio = t('sd_grade_match');
+        else if (data.giudizio_color === 'blue' || data.giudizio_color === 'amber') localizedGiudizio = t('sd_grade_good');
+        else localizedGiudizio = t('sd_grade_check');
+      }
+      giudizioLabel.textContent = localizedGiudizio;
       
       if (data.giudizio_color === 'green') {
         giudizioLabel.className = 'font-bold text-tacgreen';
