@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TACTICAL RELOAD // Ballistics Ops & Armory Logbook</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            tacdark: '#0f1115',
+            tacpanel: '#161920',
+            tacborder: '#232834',
+            tacamber: '#f59e0b',
+            tacgreen: '#16a34a',
+            tacblue: '#2563eb',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen text-gray-200 flex flex-col pb-28">
+
+  <!-- ======================================================== -->
+  <!-- TOP TACTICAL HUD NAVBAR                                  -->
+  <!-- ======================================================== -->
+  <header class="border-b border-tacborder bg-tacpanel/90 backdrop-blur sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="relative w-9 h-9 flex items-center justify-center border border-tacamber bg-black/60 rounded">
+          <i data-lucide="crosshair" class="w-6 h-6 text-tacamber"></i>
+          <span class="absolute -top-1 -right-1 w-2 h-2 bg-tacgreen rounded-full tac-live-dot"></span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold font-rajdhani tracking-wider text-white uppercase">
+              BALLISTIC OPS <span class="text-tacamber">//</span> ARMORY HUB
+            </h1>
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40">
+              v2.4 MIL-SPEC
+            </span>
+          </div>
+          <p class="text-xs text-gray-400 font-mono">Aggregatore Balistico • Calcolatore Ammortamento • Quaderno Ricarica</p>
+        </div>
+      </div>
+
+      <!-- Telemetry / Badges / Auth Widget -->
+      <div class="flex items-center gap-2.5 text-xs font-mono">
+        <div class="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded bg-black/50 border border-tacborder text-gray-300">
+          <span class="w-2 h-2 rounded-full bg-tacgreen"></span>
+          <span>CIP DATABASE: <strong class="text-white">ONLINE</strong></span>
+        </div>
+
+        <!-- Auth Status Container -->
+        <div id="auth-guest-box" class="flex items-center gap-2">
+          <button onclick="apriModaleAuth('login')" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-tacgreen/20 hover:bg-tacgreen text-tacgreen hover:text-white border border-tacgreen/40 font-bold tracking-wide transition shadow glow-green">
+            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+            <span>ACCEDI // REGISTRATI</span>
+          </button>
+        </div>
+
+        <div id="auth-user-box" class="hidden items-center gap-2">
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-black/70 border border-tacgreen text-xs font-mono">
+            <span class="w-2 h-2 rounded-full bg-tacgreen tac-live-dot"></span>
+            <span class="text-gray-400 text-[11px]">OPERATORE:</span>
+            <strong id="nav-username" class="text-white tracking-wide">...</strong>
+          </div>
+          <button onclick="eseguiLogout()" title="Disconnetti account" class="p-1.5 rounded bg-red-950/40 hover:bg-red-900 text-red-400 border border-red-800/40 transition">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <button onclick="stampaEtichettaRapida()" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-tacamber hover:bg-amber-500 text-black font-bold tracking-wide transition shadow">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>TEST PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- MAIN BALANCED 2-COLUMN GRID                              -->
+  <!-- ======================================================== -->
+  <main class="max-w-7xl mx-auto w-full px-4 py-6 flex-1">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- ==================================================== -->
+      <!-- COLONNA SINISTRA (6/12): TABELLE + QUADERNO RICETTE  -->
+      <!-- ==================================================== -->
+      <div class="lg:col-span-6 space-y-6">
+
+        <!-- 1. TABELLE DI RICARICA UFFICIALI -->
+        <section class="tac-card tac-card-blue p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="database" class="w-5 h-5 text-tacblue"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                1. Tabelle Ufficiali di Ricarica (CIP / Polveri IT-EU)
+              </h2>
+            </div>
+            <span class="text-[11px] text-gray-400 font-mono" id="tot-tabelle-count">Caricamento...</span>
+          </div>
+
+          <!-- Filtro Calibro -->
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <label for="filtro-calibro" class="text-xs font-mono uppercase text-gray-400">Seleziona Calibro:</label>
+            <select id="filtro-calibro" onchange="caricaTabelle()" class="flex-1 bg-black/60 border border-tacborder focus:border-tacblue text-white text-xs font-mono rounded px-3 py-2 outline-none">
+              <option value="ALL">TUTTI I CALIBRI (Canna Rigata & Liscia)</option>
+            </select>
+            <button onclick="caricaTabelle()" class="px-3 py-2 bg-tacborder hover:bg-gray-700 text-xs font-mono rounded text-white flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+
+          <!-- Tabella Scrollabile -->
+          <div class="overflow-x-auto max-h-72 border border-tacborder/70 rounded bg-black/40">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="bg-tacpanel text-gray-400 uppercase text-[10px] border-b border-tacborder sticky top-0">
+                <tr>
+                  <th class="p-2.5">Calibro / Palla</th>
+                  <th class="p-2.5">Polvere</th>
+                  <th class="p-2.5 text-center">Dose Min (grs)</th>
+                  <th class="p-2.5 text-center text-tacamber">Dose Max (grs)</th>
+                  <th class="p-2.5 text-center">OAL (mm)</th>
+                  <th class="p-2.5 text-right">Azione</th>
+                </tr>
+              </thead>
+              <tbody id="tabelle-tbody" class="divide-y divide-tacborder/40 text-gray-300">
+                <tr>
+                  <td colspan="6" class="p-4 text-center text-gray-500">Inizializzazione database...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-[11px] text-gray-500 font-mono mt-2 flex items-center gap-1.5">
+            <i data-lucide="info" class="w-3.5 h-3.5 text-tacblue"></i>
+            Clicca su <span class="text-tacblue font-bold">"USA"</span> per importare istantaneamente i parametri nel form del Quaderno sottostante.
+          </p>
+        </section>
+
+        <!-- 2. FORMAZIONE RICETTA // QUADERNO DIGITALE -->
+        <section class="tac-card tac-card-green p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-3">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="book-open" class="w-5 h-5 text-tacgreen"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                2. Quaderno Digitale Personale // Nuova Ricetta
+              </h2>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-tacgreen/20 text-tacgreen border border-tacgreen/40 uppercase font-bold">
+              LOGBOOK
+            </span>
+          </div>
+
+          <!-- Status Banner Account / Guest -->
+          <div id="logbook-guest-alert" class="p-2.5 bg-tacamber/10 border border-tacamber/40 rounded mb-4 flex items-center justify-between text-xs font-mono">
+            <div class="flex items-center gap-2 text-tacamber">
+              <i data-lucide="shield-alert" class="w-4 h-4 flex-shrink-0"></i>
+              <span>Modalità Demo: <strong class="text-white">Accedi</strong> per salvare le tue ricette private sul cloud.</span>
+            </div>
+            <button type="button" onclick="apriModaleAuth('register')" class="px-2 py-1 bg-tacamber text-black font-bold text-[10px] rounded uppercase hover:bg-amber-400">
+              Registrati
+            </button>
+          </div>
+          <div id="logbook-user-alert" class="hidden p-2.5 bg-tacgreen/10 border border-tacgreen/40 rounded mb-4 flex items-center justify-between text-xs font-mono">
+            <div class="flex items-center gap-2 text-tacgreen">
+              <i data-lucide="check-circle" class="w-4 h-4 flex-shrink-0"></i>
+              <span>Operatore <strong id="logbook-user-name" class="text-white">...</strong> connesso: archivio privato attivo.</span>
+            </div>
+          </div>
+
+          <form id="form-ricetta" onsubmit="salvaRicetta(event)" class="space-y-4">
+            <input type="hidden" id="edit-ricetta-id" value="">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Calibro <span class="text-red-500">*</span></label>
+                <input type="text" id="r-calibro" required placeholder="Es. 9x19 Luger o .308 Win" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Titolo Ricetta / Scopo <span class="text-red-500">*</span></label>
+                <input type="text" id="r-titolo" required placeholder="Es. Tiro Rapido IPSC Production" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Marca & Peso Palla (grani)</label>
+                <input type="text" id="r-palla" placeholder="Es. Alsa Pro FMJ-RN 124grs" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Marca & Tipo Polvere</label>
+                <input type="text" id="r-polvere" placeholder="Es. Vihtavuori N320" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Dose Polvere (grs)</label>
+                <div class="relative">
+                  <input type="number" step="0.1" id="r-dose" placeholder="4.1" oninput="aggiornaDoseGrammiRealtime()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-tacamber font-bold text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[10px] text-gray-500 font-mono">GRS</span>
+                </div>
+                <span id="r-dose-grammi-tag" class="text-[10px] text-gray-400 font-mono">≈ 0.000 g</span>
+              </div>
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">O.A.L. Scelto (mm)</label>
+                <div class="relative">
+                  <input type="number" step="0.01" id="r-oal" placeholder="29.10" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[10px] text-gray-500 font-mono">MM</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Innesco (Opzionale)</label>
+                <input type="text" id="r-innesco" placeholder="Es. Fiocchi Small Pistol" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Note di Prestazione / Rosate / Velocità Media</label>
+              <textarea id="r-note" rows="2" placeholder="Es. V0 media 318 m/s, PF 130. Ottima precisione a 25m su CZ Shadow 2, nessun segno di sovrappressione." class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none"></textarea>
+            </div>
+
+            <!-- Pulsanti Form -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div class="flex items-center gap-2">
+                <button type="submit" id="btn-salva-ricetta" class="px-4 py-2 bg-tacgreen hover:bg-green-600 text-white font-bold font-rajdhani text-sm tracking-wider uppercase rounded flex items-center gap-1.5 transition glow-green">
+                  <i data-lucide="save" class="w-4 h-4"></i>
+                  <span>Salva nel Quaderno</span>
+                </button>
+                <button type="button" onclick="resetFormRicetta()" class="px-3 py-2 bg-tacborder hover:bg-gray-700 text-gray-300 text-xs font-mono rounded">
+                  Reset
+                </button>
+              </div>
+
+              <button type="button" onclick="stampaEtichettaDaForm()" class="px-4 py-2 bg-tacblue hover:bg-blue-600 text-white font-bold font-rajdhani text-sm tracking-wider uppercase rounded flex items-center gap-1.5 transition glow-blue">
+                <i data-lucide="tag" class="w-4 h-4"></i>
+                <span>Esporta Etichetta PDF (288x144)</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- 3. ARCHIVIO RICETTE SALVATE -->
+        <section class="tac-card p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-3">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="archive" class="w-5 h-5 text-tacamber"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                Archivio Personale Ricette Salvate
+              </h2>
+            </div>
+            <span id="ricette-count" class="text-xs font-mono text-gray-400">0 Ricette</span>
+          </div>
+
+          <div id="lista-ricette" class="space-y-3 max-h-80 overflow-y-auto pr-1">
+            <!-- Popolato da JS -->
+            <div class="text-center py-6 text-gray-500 font-mono text-xs">Caricamento ricette personali...</div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- COLONNA DESTRA (6/12): CALCOLATORE ECONOMICO & BALISTICA -->
+      <!-- ==================================================== -->
+      <div class="lg:col-span-6 space-y-6">
+
+        <!-- 1. CALCOLATORE ECONOMICO AVANZATO CON AMMORTAMENTO -->
+        <section class="tac-card tac-card-green p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="calculator" class="w-5 h-5 text-tacgreen"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                3. Calcolatore Economico Avanzato // Costo & Ammortamento
+              </h2>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-tacgreen/20 text-tacgreen border border-tacgreen/40 uppercase font-bold">
+              AMMO COST ENGINE
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Palla & Innesco (Pacco + Quantità con calcolo automatico del singolo) -->
+            <div class="space-y-3">
+              <!-- Confezione Palle -->
+              <div class="p-2.5 bg-black/40 border border-tacborder rounded space-y-2">
+                <div class="flex items-center justify-between text-xs font-rajdhani uppercase font-bold text-tacgreen">
+                  <span>Confezione Palle / Ogive</span>
+                  <span id="c-singola-palla-display" class="text-[10px] font-mono text-tacamber">€ 0.105 / pz</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Costo Pacco (€)</label>
+                    <div class="relative">
+                      <input type="number" step="0.5" id="c-pacco-palla-eur" value="105.0" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-1.5 outline-none">
+                      <span class="absolute right-2 top-1.5 text-[9px] text-gray-500 font-mono">€</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Quantità (pz)</label>
+                    <div class="relative">
+                      <input type="number" step="50" id="c-pacco-palla-qta" value="1000" min="1" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-1.5 outline-none">
+                      <span class="absolute right-2 top-1.5 text-[9px] text-gray-500 font-mono">PZ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Confezione Inneschi -->
+              <div class="p-2.5 bg-black/40 border border-tacborder rounded space-y-2">
+                <div class="flex items-center justify-between text-xs font-rajdhani uppercase font-bold text-tacgreen">
+                  <span>Confezione Inneschi</span>
+                  <span id="c-singolo-innesco-display" class="text-[10px] font-mono text-tacamber">€ 0.065 / pz</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Costo Pacco (€)</label>
+                    <div class="relative">
+                      <input type="number" step="0.5" id="c-pacco-innesco-eur" value="65.0" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-1.5 outline-none">
+                      <span class="absolute right-2 top-1.5 text-[9px] text-gray-500 font-mono">€</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Quantità (pz)</label>
+                    <div class="relative">
+                      <input type="number" step="50" id="c-pacco-innesco-qta" value="1000" min="1" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-1.5 outline-none">
+                      <span class="absolute right-2 top-1.5 text-[9px] text-gray-500 font-mono">PZ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Polvere: Barattolo + Dose -->
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Barattolo Polvere (€)</label>
+                  <input type="number" step="0.5" id="c-barattolo-eur" value="68.0" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+                </div>
+                <div>
+                  <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Peso Barattolo (g)</label>
+                  <input type="number" step="50" id="c-barattolo-g" value="500" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs font-mono rounded p-2 outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Dose Polvere per Colpo (grani)</label>
+                <div class="relative">
+                  <input type="number" step="0.1" id="c-dose-grs" value="4.2" oninput="calcolaCostoLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-tacamber font-bold text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[10px] text-tacamber font-mono">GRS</span>
+                </div>
+                <div class="flex justify-between text-[10px] font-mono text-gray-400 mt-1">
+                  <span id="c-dose-g-display">Grammi: 0.272 g</span>
+                  <span id="c-polvere-colpo-display">Costo polvere: €0.037</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Ammortamento Bossolo (Pacco + Quantità con calcolo automatico del singolo) -->
+          <div class="mt-4 p-3 bg-black/50 border border-tacborder rounded space-y-2.5">
+            <div class="flex items-center justify-between text-xs font-rajdhani uppercase font-bold text-tacamber">
+              <div class="flex items-center gap-1.5">
+                <i data-lucide="recycle" class="w-4 h-4"></i>
+                <span>Ammortamento Ciclo di Vita Bossolo</span>
+              </div>
+              <span id="c-singolo-bossolo-display" class="text-[10px] font-mono text-tacamber">€ 0.2500 / pz</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Costo Pacco Bossoli (€)</label>
+                <div class="relative">
+                  <input type="number" step="0.5" id="c-pacco-bossolo-eur" value="25.0" oninput="calcolaCostoLive()" class="w-full bg-tacpanel border border-tacborder focus:border-tacamber text-white text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[9px] text-gray-500 font-mono">€</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Quantità nel Pacco (pz)</label>
+                <div class="relative">
+                  <input type="number" step="50" id="c-pacco-bossolo-qta" value="100" min="1" oninput="calcolaCostoLive()" class="w-full bg-tacpanel border border-tacborder focus:border-tacamber text-white text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[9px] text-gray-500 font-mono">PZ</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase font-mono text-gray-400 mb-1">Ricariche Previste (Cicli)</label>
+                <div class="relative">
+                  <input type="number" step="1" id="c-bossolo-cicli" value="5" min="1" oninput="calcolaCostoLive()" class="w-full bg-tacpanel border border-tacborder focus:border-tacamber text-white text-xs font-mono rounded p-2 outline-none">
+                  <span class="absolute right-2 top-2 text-[9px] text-gray-500 font-mono">CICLI</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-[10px] font-mono text-gray-400 pt-1 border-t border-tacborder/40">
+              <span id="c-costo-unitario-bossolo">Costo bossolo nuovo: €0.2500</span>
+              <span id="c-quota-bossolo-display" class="text-tacamber font-bold">Quota ammortizzata: €0.0500 / colpo</span>
+            </div>
+          </div>
+
+          <!-- DISPLAY HUD COSTI FINALI -->
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="bg-black/80 border-2 border-tacgreen p-3 rounded text-center glow-green">
+              <span class="block text-[10px] font-mono uppercase text-gray-400">Costo Singolo Colpo</span>
+              <span id="display-costo-singolo" class="text-2xl font-bold font-rajdhani text-white">€ 0.257</span>
+              <span class="block text-[9px] font-mono text-tacgreen mt-0.5">COMPLETO AMMORTIZZATO</span>
+            </div>
+
+            <div class="bg-black/80 border border-tacborder p-3 rounded text-center">
+              <span class="block text-[10px] font-mono uppercase text-gray-400">Scatola da 50 Colpi</span>
+              <span id="display-costo-50" class="text-2xl font-bold font-rajdhani text-tacamber">€ 12.85</span>
+              <span class="block text-[9px] font-mono text-gray-400 mt-0.5">VS €19.00 COMMERCIALE</span>
+            </div>
+
+            <div class="bg-black/80 border border-tacborder p-3 rounded text-center">
+              <span class="block text-[10px] font-mono uppercase text-gray-400">Lotto 1.000 Colpi</span>
+              <span id="display-costo-1000" class="text-2xl font-bold font-rajdhani text-tacblue">€ 257.00</span>
+              <span id="display-risparmio" class="block text-[9px] font-mono text-tacgreen mt-0.5">Risparmio: ~32%</span>
+            </div>
+          </div>
+
+          <!-- Pulsante Salvataggio Preset Cloud -->
+          <div class="mt-3 flex items-center justify-between border-t border-tacborder/40 pt-2 text-[11px] font-mono">
+            <span class="text-gray-500">Sincronizzazione parametri:</span>
+            <button type="button" onclick="salvaPresetEconomico()" class="text-gray-400 hover:text-tacgreen flex items-center gap-1.5 transition">
+              <i data-lucide="cloud" class="w-3.5 h-3.5 text-tacgreen"></i>
+              <span id="btn-save-presets-text">Salva Costi & Chrono nel Profilo</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 2. MODULO BALISTICO: POWER FACTOR & ENERGIA JOULE -->
+        <section class="tac-card p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="gauge" class="w-5 h-5 text-tacamber"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                4. Modulo Balistico Standalone // Power Factor & Joule
+              </h2>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-tacamber/20 text-tacamber border border-tacamber/40 uppercase font-bold">
+              IPSC BALLISTICS
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Peso Palla (grani)</label>
+              <div class="relative">
+                <input type="number" step="1" id="b-peso-grs" value="124" oninput="calcolaBalisticaLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacamber text-white text-xs font-mono rounded p-2 outline-none">
+                <span class="absolute right-2 top-2 text-[10px] text-gray-500 font-mono">GRS</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Velocità Misurata</label>
+              <div class="relative">
+                <input type="number" step="0.1" id="b-velocita" value="320" oninput="calcolaBalisticaLive()" class="w-full bg-black/60 border border-tacborder focus:border-tacamber text-white text-xs font-mono rounded p-2 outline-none">
+                <span id="b-unita-label" class="absolute right-2 top-2 text-[10px] text-tacamber font-mono">M/S</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] uppercase font-mono text-gray-400 mb-1">Unità Velocità</label>
+              <div class="grid grid-cols-2 gap-1 bg-black/60 p-1 border border-tacborder rounded">
+                <button type="button" id="btn-unita-ms" onclick="setUnitaBalistica('ms')" class="py-1 text-xs font-mono font-bold rounded bg-tacamber text-black">
+                  m/s
+                </button>
+                <button type="button" id="btn-unita-fps" onclick="setUnitaBalistica('fps')" class="py-1 text-xs font-mono font-bold rounded text-gray-400 hover:text-white">
+                  fps
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Risultati Balistici HUD -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-4">
+            <div class="bg-black/60 border border-tacborder p-2.5 rounded">
+              <span class="block text-[10px] font-mono text-gray-400 uppercase">Power Factor</span>
+              <span id="b-res-pf" class="text-xl font-bold font-rajdhani text-tacamber">130.2</span>
+              <span class="block text-[9px] font-mono text-gray-500">IPSC PISTOLA</span>
+            </div>
+            <div class="bg-black/60 border border-tacborder p-2.5 rounded">
+              <span class="block text-[10px] font-mono text-gray-400 uppercase">Energia Cinetica</span>
+              <span id="b-res-joule" class="text-xl font-bold font-rajdhani text-tacgreen">411.3 J</span>
+              <span class="block text-[9px] font-mono text-gray-500">JOULE</span>
+            </div>
+            <div class="bg-black/60 border border-tacborder p-2.5 rounded">
+              <span class="block text-[10px] font-mono text-gray-400 uppercase">Velocità fps</span>
+              <span id="b-res-fps" class="text-lg font-bold font-rajdhani text-white">1049.9</span>
+              <span class="block text-[9px] font-mono text-gray-500">PIEDI/SEC</span>
+            </div>
+            <div class="bg-black/60 border border-tacborder p-2.5 rounded">
+              <span class="block text-[10px] font-mono text-gray-400 uppercase">Velocità m/s</span>
+              <span id="b-res-ms" class="text-lg font-bold font-rajdhani text-white">320.0</span>
+              <span class="block text-[9px] font-mono text-gray-500">METRI/SEC</span>
+            </div>
+          </div>
+
+          <!-- Classificazione IPSC Matrix -->
+          <div class="p-3 bg-black/50 border border-tacborder rounded text-xs font-mono space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] pb-1 border-b border-tacborder">
+              <span class="text-gray-400">Classificazione Competizione:</span>
+              <span id="b-status-badge" class="font-bold px-2 py-0.5 rounded bg-tacgreen/20 text-tacgreen border border-tacgreen/40">
+                MINOR // IDONEO GARA
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-300 pt-1">
+              <div>• Open: <strong id="ipsc-open" class="text-white">MINOR (>=125)</strong></div>
+              <div>• Standard/Classic: <strong id="ipsc-standard" class="text-white">MINOR (>=125)</strong></div>
+              <div>• Production/Optics: <strong id="ipsc-production" class="text-tacgreen">MINOR (Fattore unico)</strong></div>
+              <div>• PCC Carbine: <strong id="ipsc-pcc" class="text-tacgreen">REGOLAMENTARE (>=125)</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. CRONOGRAFO: DEVIAZIONE STANDARD (SD) & EXTREME SPREAD (ES) -->
+        <section class="tac-card tac-card-blue p-5 rounded-lg shadow-xl">
+          <div class="flex items-center justify-between border-b border-tacborder pb-3 mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="activity" class="w-5 h-5 text-tacblue"></i>
+              <h2 class="text-sm md:text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                5. Analizzatore Cronografo // SD & Extreme Spread
+              </h2>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-tacblue/20 text-tacblue border border-tacblue/40 uppercase font-bold">
+              CHRONO STATS
+            </span>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[11px] uppercase font-mono text-gray-400">
+                  Stringa Velocità Cronografate (separate da virgola o spazio)
+                </label>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-gray-500 font-mono">Unità:</span>
+                  <select id="chrono-unita" class="bg-black/60 border border-tacborder text-white text-[10px] font-mono rounded px-1.5 py-0.5">
+                    <option value="ms">m/s</option>
+                    <option value="fps">fps</option>
+                  </select>
+                </div>
+              </div>
+              <textarea id="chrono-stringa" rows="2" placeholder="Es. 315.2, 318.0, 316.5, 319.1, 317.4" class="w-full bg-black/60 border border-tacborder focus:border-tacblue text-white text-xs font-mono rounded p-2 outline-none">315.2, 318.0, 316.5, 319.1, 317.4</textarea>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <button type="button" onclick="calcolaSD()" class="px-4 py-2 bg-tacblue hover:bg-blue-600 text-white font-bold font-rajdhani text-sm tracking-wider uppercase rounded flex items-center gap-1.5 transition glow-blue">
+                <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                <span>Calcola SD & Extreme Spread</span>
+              </button>
+              <span id="chrono-error" class="text-xs text-red-400 font-mono hidden"></span>
+            </div>
+
+            <!-- RISULTATI STATISTICI CRONO -->
+            <div id="chrono-results" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center pt-2">
+              <div class="bg-black/60 border border-tacborder p-2 rounded">
+                <span class="block text-[9px] font-mono text-gray-400 uppercase">Velocità Media</span>
+                <span id="sd-media" class="text-lg font-bold font-rajdhani text-white">317.24</span>
+                <span id="sd-media-unit" class="block text-[9px] font-mono text-gray-500">m/s</span>
+              </div>
+
+              <div class="bg-black/60 border border-tacgreen p-2 rounded glow-green">
+                <span class="block text-[9px] font-mono text-tacgreen uppercase font-bold">Standard Dev (SD)</span>
+                <span id="sd-val" class="text-lg font-bold font-rajdhani text-tacgreen">1.47</span>
+                <span id="sd-val-unit" class="block text-[9px] font-mono text-gray-500">m/s</span>
+              </div>
+
+              <div class="bg-black/60 border border-tacborder p-2 rounded">
+                <span class="block text-[9px] font-mono text-gray-400 uppercase">Extreme Spread (ES)</span>
+                <span id="sd-es" class="text-lg font-bold font-rajdhani text-tacamber">3.90</span>
+                <span id="sd-es-unit" class="block text-[9px] font-mono text-gray-500">m/s</span>
+              </div>
+
+              <div class="bg-black/60 border border-tacborder p-2 rounded">
+                <span class="block text-[9px] font-mono text-gray-400 uppercase">Colpi Rilevati</span>
+                <span id="sd-count" class="text-lg font-bold font-rajdhani text-tacblue">5 colpi</span>
+                <span id="sd-minmax" class="block text-[9px] font-mono text-gray-500">Min: 315.2 | Max: 319.1</span>
+              </div>
+            </div>
+
+            <!-- Valutazione della costanza -->
+            <div id="chrono-giudizio-box" class="p-2.5 bg-black/50 border border-tacgreen/50 rounded flex items-center justify-between text-xs font-mono">
+              <span class="text-gray-400">Qualità Costanza Balistica:</span>
+              <span id="sd-giudizio" class="font-bold text-tacgreen">MATCH GRADE // ECCELLENTE</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- FOOTER FISSO / INTEGRATO: DISCLAIMER LEGALE DI SICUREZZA -->
+  <!-- ======================================================== -->
+  <footer class="fixed bottom-0 left-0 right-0 z-50 bg-[#0d0f12]/95 backdrop-blur-md border-t-2 border-tacamber/60 px-4 py-2.5 text-gray-400 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-2 text-[10px] font-mono">
+      <div class="flex items-start gap-2 max-w-4xl">
+        <div class="p-1 rounded bg-tacamber/20 text-tacamber mt-0.5 flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <span class="text-tacamber font-bold uppercase tracking-wider">
+            ⚠️ AVVERTENZA LEGALE SULLA SICUREZZA E MANIPOLAZIONE DI PROPELLENTI ED ESPLODENTI:
+          </span>
+          <p class="text-gray-300 leading-tight mt-0.5">
+            La ricarica domestica di munizioni richiede competenza, attrezzature adeguate e rispetto rigoroso delle normative di pubblica sicurezza. I propellenti, gli inneschi e le munizioni finite sono sostanze esplodenti o deflagranti che generano altissime pressioni. Le dosi e i parametri qui forniti hanno mero valore informativo, bibliografico e sperimentale. L'utente è l'unico responsabile del rispetto dei limiti pressori C.I.P. e SAAMI, della verifica dello stato dei bossoli e dell'assoluta conformità alle leggi vigenti. Gli autori della piattaforma declinano ogni responsabilità diretta o indiretta per incidenti, danni a persone, animali, cose o armi.
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-gray-500 whitespace-nowrap self-end md:self-center">
+        <span>C.I.P. STANDARDS COMPLIANT</span>
+        <span>•</span>
+        <span class="text-tacgreen">ARMORY READY</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================== -->
+  <!-- MODALE TATTICO AUTENTICAZIONE OPERATORE                   -->
+  <!-- ======================================================== -->
+  <div id="modal-auth" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="tac-card tac-card-green max-w-md w-full p-6 rounded-lg shadow-2xl relative">
+      <!-- Pulsante Chiusura -->
+      <button onclick="chiudiModaleAuth()" class="absolute top-3 right-3 text-gray-400 hover:text-white p-1 rounded hover:bg-white/10 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Intestazione Tattica -->
+      <div class="flex items-center space-x-2.5 mb-4 border-b border-tacborder pb-3">
+        <div class="w-8 h-8 rounded bg-tacgreen/20 border border-tacgreen/40 flex items-center justify-center text-tacgreen">
+          <i data-lucide="shield" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+            AUTORIZZAZIONE OPERATORE
+          </h3>
+          <span class="text-[10px] text-gray-400 font-mono">Gestione Account Personale & Sincronizzazione Cloud</span>
+        </div>
+      </div>
+
+      <!-- Tab Selettori [Accedi / Registrati] -->
+      <div class="grid grid-cols-2 gap-1 bg-black/60 p-1 rounded border border-tacborder mb-4 font-mono text-xs">
+        <button type="button" id="tab-auth-login" onclick="impostaTabAuth('login')" class="py-2 text-center font-bold rounded bg-tacgreen text-white transition">
+          [ACCESSO]
+        </button>
+        <button type="button" id="tab-auth-register" onclick="impostaTabAuth('register')" class="py-2 text-center font-bold rounded text-gray-400 hover:text-white transition">
+          [REGISTRATI]
+        </button>
+      </div>
+
+      <!-- Banner Errore / Notifiche -->
+      <div id="auth-error-banner" class="hidden mb-4 p-2.5 rounded bg-red-950/60 border border-red-800 text-red-300 text-xs font-mono"></div>
+
+      <!-- Form Autenticazione -->
+      <form id="form-auth" onsubmit="inviaFormAuth(event)" class="space-y-3 font-mono">
+        <div>
+          <label class="block text-[11px] uppercase text-gray-400 mb-1">Nome Operatore / Username <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input type="text" id="auth-username" required placeholder="Es. Operatore_01" autocomplete="username" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs rounded p-2.5 outline-none">
+            <i data-lucide="user" class="w-4 h-4 text-gray-500 absolute right-2.5 top-2.5"></i>
+          </div>
+        </div>
+
+        <div id="auth-email-group" class="hidden">
+          <label class="block text-[11px] uppercase text-gray-400 mb-1">Email (Facoltativa)</label>
+          <div class="relative">
+            <input type="email" id="auth-email" placeholder="operatore@esempio.it" autocomplete="email" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs rounded p-2.5 outline-none">
+            <i data-lucide="mail" class="w-4 h-4 text-gray-500 absolute right-2.5 top-2.5"></i>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] uppercase text-gray-400 mb-1">Password di Sicurezza <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input type="password" id="auth-password" required placeholder="••••••••" autocomplete="current-password" class="w-full bg-black/60 border border-tacborder focus:border-tacgreen text-white text-xs rounded p-2.5 outline-none">
+            <i data-lucide="lock" class="w-4 h-4 text-gray-500 absolute right-2.5 top-2.5"></i>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-auth-submit" class="w-full mt-2 py-2.5 bg-tacgreen hover:bg-green-600 text-white font-bold font-rajdhani text-sm tracking-wider uppercase rounded flex items-center justify-center gap-2 transition glow-green">
+          <i data-lucide="key" class="w-4 h-4"></i>
+          <span id="btn-auth-label">AUTORIZZA ACCESSO</span>
+        </button>
+      </form>
+
+      <div class="mt-4 pt-3 border-t border-tacborder/60 text-[10px] font-mono text-gray-500 text-center">
+        Crittografia credenziali con PBKDF2/SHA-256 e isolamento rigoroso dei dati di ricarica.
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+  <script>
+    // Inizializza icone Lucide
+    lucide.createIcons();
+  </script>
+</body>
+</html>

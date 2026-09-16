@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Rajdhani:wght@500;600;700&display=swap');
+
+:root {
+  --bg-dark: #0f1115;
+  --panel-dark: #161920;
+  --panel-border: #232834;
+  --amber-tac: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.2);
+  --green-tac: #16a34a;
+  --green-glow: rgba(22, 163, 74, 0.25);
+  --blue-tac: #2563eb;
+  --blue-glow: rgba(37, 99, 235, 0.25);
+}
+
+body {
+  font-family: 'Chivo Mono', monospace;
+  background-color: var(--bg-dark);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+  color: #e5e7eb;
+}
+
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.tac-card {
+  background: var(--panel-dark);
+  border: 1px solid var(--panel-border);
+  position: relative;
+}
+
+.tac-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--amber-tac);
+  border-left: 2px solid var(--amber-tac);
+}
+
+.tac-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid var(--amber-tac);
+  border-right: 2px solid var(--amber-tac);
+}
+
+.tac-card-blue::before {
+  border-color: var(--blue-tac);
+}
+.tac-card-blue::after {
+  border-color: var(--blue-tac);
+}
+
+.tac-card-green::before {
+  border-color: var(--green-tac);
+}
+.tac-card-green::after {
+  border-color: var(--green-tac);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111317;
+}
+::-webkit-scrollbar-thumb {
+  background: #2d3748;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a5568;
+}
+
+.glow-amber {
+  box-shadow: 0 0 15px var(--amber-glow);
+}
+.glow-green {
+  box-shadow: 0 0 15px var(--green-glow);
+}
+.glow-blue {
+  box-shadow: 0 0 15px var(--blue-glow);
+}
+
+/* Pulse indicator */
+@keyframes tac-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.92); }
+}
+
+.tac-live-dot {
+  animation: tac-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
