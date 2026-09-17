@@ -360,6 +360,22 @@ class TacticalReloadTestCase(unittest.TestCase):
         self.assertEqual(res_gsc.status_code, 200)
         self.assertIn(b'google-site-verification: googlec4d8d72365b0f7d7.html', res_gsc.data)
 
+    def test_health_endpoint_keepalive(self):
+        # 1. Test /health
+        res_health = self.client.get('/health')
+        self.assertEqual(res_health.status_code, 200)
+        data = json.loads(res_health.data)
+        self.assertEqual(data['status'], 'OK')
+        self.assertEqual(data['service'], 'ricarica-balistica')
+
+        # 2. Test /api/health
+        res_api_health = self.client.get('/api/health')
+        self.assertEqual(res_api_health.status_code, 200)
+
+        # 3. Test /ping
+        res_ping = self.client.get('/ping')
+        self.assertEqual(res_ping.status_code, 200)
+
 if __name__ == '__main__':
     unittest.main()
 

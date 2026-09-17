@@ -298,7 +298,7 @@ def risolvi_paese_visitatore(ip):
 @app.before_request
 def traccia_visitatore():
     path = request.path
-    if path.startswith('/static') or path in ('/favicon.ico', '/robots.txt') or path.startswith('/api/admin'):
+    if path.startswith('/static') or path in ('/favicon.ico', '/robots.txt', '/health', '/api/health', '/ping') or path.startswith('/api/admin'):
         return
         
     try:
@@ -1426,6 +1426,17 @@ def favicon():
 def google_search_console_verification():
     """Verifica di proprietà per Google Search Console"""
     return Response('google-site-verification: googlec4d8d72365b0f7d7.html', mimetype='text/html')
+
+@app.route('/health')
+@app.route('/api/health')
+@app.route('/ping')
+def health_check():
+    """Endpoint Keep-Alive per UptimeRobot / CronJob per prevenire lo sleep su Render"""
+    return jsonify({
+        'status': 'OK',
+        'service': 'ricarica-balistica',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5055))
